@@ -55,9 +55,12 @@ const synthesizePodcastAudioFlow = ai.defineFlow(
                 uniqueSpeakers.add(speaker);
                 prompt += `${speaker}: ${text}\n`;
             }
-        } 
-        // We will ignore lines that don't match the "Speaker: Text" format.
-        // This prevents metadata or scene descriptions from being included in the TTS prompt.
+        } else {
+            // If line doesn't match "Speaker: Text", and we have no speakers yet, treat it as a monologue.
+            if (uniqueSpeakers.size === 0) {
+                prompt += line + '\n';
+            }
+        }
     }
     
     if (!prompt.trim()) {
@@ -74,9 +77,6 @@ const synthesizePodcastAudioFlow = ai.defineFlow(
             const voice = voiceConfig[speaker]?.voiceName;
             if (!voice) {
               console.warn(`No voice configured for speaker: ${speaker}, skipping.`);
-              // If a voice is missing, we might not want to proceed or use a default.
-              // For now, we'll continue, but this might result in an API error if the speaker is in the prompt.
-              // A better approach might be to throw an error here.
               throw new Error(`No voice configured for speaker: ${speaker}. Please assign a voice on the create page.`);
             }
             speakerVoiceConfigs.push({
@@ -101,6 +101,8 @@ const synthesizePodcastAudioFlow = ai.defineFlow(
          if (!firstConfiguredVoice) {
              throw new Error("The script has no speakers, and no default voice is configured.");
          }
+         // Remove speaker cues if we are treating as a monologue
+         prompt = prompt.replace(/^([A-Za-z0-9_ -]+):\s*/gm, '');
          speechConfig = { voiceConfig: { prebuiltVoiceConfig: { voiceName: firstConfiguredVoice } } };
     }
     
