@@ -11,6 +11,10 @@
 - Podcast Export: Allow users to export the final podcast as an MP3 file.
 - User Sign Up: Allow user to sign up to use the app
 - Saving Options: The option to save locally or to a cloud service for the user
+- Voice Cloning: Voice Cloning: Allow users to clone their voice or other voices for use in podcast generation.
+- Voice Style Transfer: Voice Style Transfer: Enable users to modify the style of the AI voices, such as adding emotion or changing the tone.
+- API Access: API Access: Provide API access for developers to integrate The Void AI's voice generation capabilities into their own applications.
+- Multilingual Support: Multilingual Support: Offer AI voices that support multiple languages for podcast generation.
 
 ## Style Guidelines:
 
