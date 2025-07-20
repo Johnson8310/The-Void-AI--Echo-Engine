@@ -9,12 +9,10 @@ export default function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 flex h-16 w-full items-center justify-between border-b border-border bg-background/80 px-4 backdrop-blur-sm sm:px-6">
       <div className="flex items-center gap-2">
-        <div className="md:hidden">
-          <SidebarTrigger />
-        </div>
-        <Link href="/" className="hidden items-center gap-2 md:flex">
+        <SidebarTrigger className="md:hidden" />
+        <Link href="/" className="flex items-center gap-2">
           <Bot className="h-8 w-8 text-primary" />
-          <span className="font-headline text-xl tracking-wider">VOID AI</span>
+          <span className="font-headline text-xl tracking-wider hidden md:flex">VOID AI</span>
         </Link>
       </div>
 
