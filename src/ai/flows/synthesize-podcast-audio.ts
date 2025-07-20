@@ -5,7 +5,7 @@
  *
  * - synthesizePodcastAudio - A function that handles the podcast audio synthesis process.
  * - SynthesizePodcastAudioInput - The input type for the synthesizePodcastAudio function.
- * - SynthesizePodcastAudioOutput - The return type for the synthesizePodcastAudio function.
+ * - SynthesizePodcastAudioOutput - The return type for the synthesizePodcastAudioOutput function.
  */
 
 import {ai} from '@/ai/genkit';
@@ -39,20 +39,28 @@ const synthesizePodcastAudioFlow = ai.defineFlow(
   },
   async input => {
     const {script, voiceConfig} = input;
-
-    // Split the script into segments based on speaker cues.
-    const segments = script.split(/\n(?=[A-Za-z0-9 ]+:)/);
-
+    
+    // Improved script parsing
+    const lines = script.split('\n').filter(line => line.trim() !== '');
     let prompt = '';
     const uniqueSpeakers = new Set<string>();
 
-    for (const segment of segments) {
-      const [speaker, text] = segment.split(/:(.*)/s).map(s => s.trim());
-      if (!speaker || !text) {
-        continue;
-      }
-      uniqueSpeakers.add(speaker);
-      prompt += `${speaker}: ${text}\n`;
+    for (const line of lines) {
+        // Match lines that start with a speaker cue like "Speaker Name:"
+        const match = line.match(/^([A-Za-z0-9_ -]+):\s*(.*)$/);
+        if (match) {
+            const speaker = match[1].trim();
+            const text = match[2].trim();
+            if (speaker && text) {
+                uniqueSpeakers.add(speaker);
+                prompt += `${speaker}: ${text}\n`;
+            }
+        } else {
+            // Treat lines without a speaker cue as part of the prompt if they are not just metadata
+            if (!line.trim().startsWith('[')) {
+                 prompt += `${line}\n`;
+            }
+        }
     }
     
     if (!prompt.trim()) {
@@ -69,7 +77,10 @@ const synthesizePodcastAudioFlow = ai.defineFlow(
             const voice = voiceConfig[speaker]?.voiceName;
             if (!voice) {
               console.warn(`No voice configured for speaker: ${speaker}, skipping.`);
-              continue; 
+              // If a voice is missing, we might not want to proceed or use a default.
+              // For now, we'll continue, but this might result in an API error if the speaker is in the prompt.
+              // A better approach might be to throw an error here.
+              throw new Error(`No voice configured for speaker: ${speaker}. Please assign a voice on the create page.`);
             }
             speakerVoiceConfigs.push({
                 speaker: speaker,
@@ -87,8 +98,13 @@ const synthesizePodcastAudioFlow = ai.defineFlow(
             throw new Error(`No voice configured for the only speaker: ${speaker}`);
         }
         speechConfig = { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } };
-    } else {
-         throw new Error("No speakers found in the script.");
+    } else { // This case handles scripts with no explicit speakers (e.g., a single block of text).
+         // Assuming single speaker, but no speaker name is known. Let's find the first configured voice and use it.
+         const firstConfiguredVoice = Object.values(voiceConfig)[0]?.voiceName;
+         if (!firstConfiguredVoice) {
+             throw new Error("The script has no speakers, and no default voice is configured.");
+         }
+         speechConfig = { voiceConfig: { prebuiltVoiceConfig: { voiceName: firstConfiguredVoice } } };
     }
     
     const {media} = await ai.generate({
