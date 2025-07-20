@@ -44,11 +44,12 @@ const synthesizePodcastAudioFlow = ai.defineFlow(
     const lines = script.split('\n').filter(line => line.trim() !== '');
     let prompt = '';
     const uniqueSpeakers = new Set<string>();
+    let isMonologue = true;
 
     for (const line of lines) {
-        // Match lines that start with a speaker cue like "Speaker Name:"
         const match = line.match(/^([A-Za-z0-9_ -]+):\s*(.*)$/);
         if (match) {
+            isMonologue = false;
             const speaker = match[1].trim();
             const text = match[2].trim();
             if (speaker && text) {
@@ -56,10 +57,11 @@ const synthesizePodcastAudioFlow = ai.defineFlow(
                 prompt += `${speaker}: ${text}\n`;
             }
         } else {
-            // If line doesn't match "Speaker: Text", and we have no speakers yet, treat it as a monologue.
-            if (uniqueSpeakers.size === 0) {
+             // If a line doesn't match and we haven't found any speakers yet,
+             // append it to the prompt. This builds up the monologue.
+             if(isMonologue) {
                 prompt += line + '\n';
-            }
+             }
         }
     }
     
@@ -67,18 +69,17 @@ const synthesizePodcastAudioFlow = ai.defineFlow(
       throw new Error("The script is empty or could not be parsed into valid speaker segments. Please ensure the script format is 'Speaker: Text'.");
     }
 
+    if (isMonologue) {
+        uniqueSpeakers.add("Narrator");
+    }
+
     let speechConfig: any;
     const speakersArray = Array.from(uniqueSpeakers);
 
     if (speakersArray.length > 1) {
-        // Multi-speaker logic
         const speakerVoiceConfigs = [];
         for (const speaker of speakersArray) {
-            const voice = voiceConfig[speaker]?.voiceName;
-            if (!voice) {
-              console.warn(`No voice configured for speaker: ${speaker}, skipping.`);
-              throw new Error(`No voice configured for speaker: ${speaker}. Please assign a voice on the create page.`);
-            }
+            const voice = voiceConfig[speaker]?.voiceName || 'algenib'; // Fallback voice
             speakerVoiceConfigs.push({
                 speaker: speaker,
                 voiceConfig: {
@@ -88,22 +89,16 @@ const synthesizePodcastAudioFlow = ai.defineFlow(
         }
         speechConfig = { multiSpeakerVoiceConfig: { speakerVoiceConfigs } };
     } else if (speakersArray.length === 1) {
-        // Single-speaker logic
         const speaker = speakersArray[0];
-        const voice = voiceConfig[speaker]?.voiceName;
-        if (!voice) {
-            throw new Error(`No voice configured for the only speaker: ${speaker}`);
+        const voice = voiceConfig[speaker]?.voiceName || 'algenib'; // Fallback voice
+        
+        // If it was a monologue, we need to add the speaker name to the prompt
+        if (isMonologue) {
+            prompt = `${speaker}: ${prompt}`;
         }
         speechConfig = { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } };
-    } else { // This case handles scripts with no explicit speakers (e.g., a single block of text).
-         // Assuming single speaker, but no speaker name is known. Let's find the first configured voice and use it.
-         const firstConfiguredVoice = Object.values(voiceConfig)[0]?.voiceName;
-         if (!firstConfiguredVoice) {
-             throw new Error("The script has no speakers, and no default voice is configured.");
-         }
-         // Remove speaker cues if we are treating as a monologue
-         prompt = prompt.replace(/^([A-Za-z0-9_ -]+):\s*/gm, '');
-         speechConfig = { voiceConfig: { prebuiltVoiceConfig: { voiceName: firstConfiguredVoice } } };
+    } else {
+      throw new Error("Could not identify any speakers in the script.");
     }
     
     const {media} = await ai.generate({
