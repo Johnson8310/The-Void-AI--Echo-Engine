@@ -35,7 +35,8 @@ export async function POST(req: NextRequest) {
     
     // Provide a more specific error message if available from the caught error
     const errorMessage = error.message || "An unexpected error occurred during audio synthesis.";
+    const statusCode = error.message.includes("configured for speaker") || error.message.includes("parsed into valid speaker segments") ? 400 : 500;
     
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    return NextResponse.json({ error: errorMessage }, { status: statusCode });
   }
 }
