@@ -55,12 +55,9 @@ const synthesizePodcastAudioFlow = ai.defineFlow(
                 uniqueSpeakers.add(speaker);
                 prompt += `${speaker}: ${text}\n`;
             }
-        } else {
-            // Treat lines without a speaker cue as part of the prompt if they are not just metadata
-            if (!line.trim().startsWith('[')) {
-                 prompt += `${line}\n`;
-            }
-        }
+        } 
+        // We will ignore lines that don't match the "Speaker: Text" format.
+        // This prevents metadata or scene descriptions from being included in the TTS prompt.
     }
     
     if (!prompt.trim()) {
