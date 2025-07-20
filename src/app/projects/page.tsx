@@ -7,7 +7,7 @@ import { getProjects, Project } from "@/services/project-service";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Loader2, PlusCircle, Mic, FileText } from "lucide-react";
+import { Loader2, PlusCircle, Mic, FileText, Edit } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 export default function ProjectsPage() {
@@ -87,7 +87,12 @@ export default function ProjectsPage() {
                 )}
               </CardContent>
               <CardFooter>
-                <Button variant="outline" className="w-full" disabled>Edit Project (soon)</Button>
+                 <Button asChild variant="outline" className="w-full">
+                    <Link href={`/create?projectId=${project.id}`}>
+                        <Edit className="mr-2 h-4 w-4" />
+                        Edit Project
+                    </Link>
+                </Button>
               </CardFooter>
             </Card>
           ))}

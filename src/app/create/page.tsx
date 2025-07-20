@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { generatePodcastScript } from "@/ai/flows/generate-podcast-script";
 import { synthesizePodcastAudio } from "@/ai/flows/synthesize-podcast-audio";
-import { saveProject } from "@/services/project-service";
+import { saveProject, getProject, updateProject, Project } from "@/services/project-service";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { AI_VOICES } from "@/constants/voices";
@@ -23,6 +23,8 @@ export default function CreatePodcastPage() {
   const { toast } = useToast();
   const { user } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const projectId = searchParams.get("projectId");
 
   const [projectTitle, setProjectTitle] = useState("");
   const [documentContent, setDocumentContent] = useState("");
@@ -33,6 +35,31 @@ export default function CreatePodcastPage() {
   const [isLoadingScript, setIsLoadingScript] = useState(false);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingProject, setIsLoadingProject] = useState(!!projectId);
+
+  useEffect(() => {
+    if (projectId && user) {
+      setIsLoadingProject(true);
+      getProject(projectId, user.uid)
+        .then((project) => {
+          if (project) {
+            setProjectTitle(project.title);
+            setDocumentContent(project.originalContent);
+            setScript(project.script);
+            setVoiceConfig(project.voiceConfig);
+            setAudioUrl(project.audioUrl);
+          } else {
+            toast({ title: "Error", description: "Project not found or you don't have access.", variant: "destructive" });
+            router.push('/create');
+          }
+        })
+        .catch(err => {
+            console.error(err);
+            toast({ title: "Error", description: "Failed to load project.", variant: "destructive" });
+        })
+        .finally(() => setIsLoadingProject(false));
+    }
+  }, [projectId, user, router, toast]);
 
   const speakers = useMemo(() => {
     if (!script) return [];
@@ -44,6 +71,8 @@ export default function CreatePodcastPage() {
   }, [script]);
 
   useEffect(() => {
+    if (isLoadingProject) return; 
+    
     const newConfig: VoiceConfig = {};
     let configUpdated = false;
 
@@ -59,7 +88,7 @@ export default function CreatePodcastPage() {
     if (configUpdated || Object.keys(voiceConfig).length !== speakers.length) {
         setVoiceConfig(newConfig);
     }
-  }, [speakers, voiceConfig]);
+  }, [speakers, voiceConfig, isLoadingProject]);
 
   const handleGenerateScript = async () => {
     if (!documentContent.trim()) {
@@ -118,15 +147,23 @@ export default function CreatePodcastPage() {
     }
     setIsSaving(true);
     try {
-        await saveProject({
+        const projectData = {
             title: projectTitle,
             originalContent: documentContent,
             script,
             voiceConfig,
             audioUrl,
             userId: user.uid,
-        });
-        toast({ title: "Project Saved!", description: `"${projectTitle}" has been saved successfully.` });
+        };
+
+        if(projectId) {
+            await updateProject(projectId, projectData);
+            toast({ title: "Project Updated!", description: `"${projectTitle}" has been updated successfully.` });
+        } else {
+            await saveProject(projectData);
+            toast({ title: "Project Saved!", description: `"${projectTitle}" has been saved successfully.` });
+        }
+
         router.push("/projects");
     } catch (error) {
         console.error("Failed to save project:", error);
@@ -142,11 +179,19 @@ export default function CreatePodcastPage() {
 
   const isSynthesizeDisabled = isLoadingAudio || !script || Object.keys(voiceConfig).length !== speakers.length;
 
+  if (isLoadingProject) {
+      return (
+          <div className="flex justify-center items-center h-64">
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          </div>
+      )
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h1 className="text-4xl font-headline tracking-tight">Create a Podcast</h1>
-        <p className="text-muted-foreground mt-2">Follow the steps below to turn your document into a podcast.</p>
+        <h1 className="text-4xl font-headline tracking-tight">{projectId ? 'Edit Podcast' : 'Create a Podcast'}</h1>
+        <p className="text-muted-foreground mt-2">{projectId ? 'Modify your project below.' : 'Follow the steps below to turn your document into a podcast.'}</p>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start mt-4">
         <div className="lg:col-span-2 flex flex-col gap-8">
@@ -228,7 +273,7 @@ export default function CreatePodcastPage() {
             </CardContent>
           </Card>
 
-          {(isLoadingAudio || audioUrl) && (
+          {(isLoadingAudio || audioUrl || script) && (
             <Card>
               <CardHeader>
                 <CardTitle>4. Preview &amp; Export</CardTitle>
@@ -243,6 +288,9 @@ export default function CreatePodcastPage() {
                 {audioUrl && !isLoadingAudio && (
                   <>
                     <audio controls src={audioUrl} className="w-full">Your browser does not support the audio element.</audio>
+                  </>
+                )}
+                {script && (
                     <div className="w-full flex flex-col gap-2">
                         <div className="space-y-2">
                             <Label htmlFor="project-title">Project Title</Label>
@@ -250,16 +298,17 @@ export default function CreatePodcastPage() {
                         </div>
                         <Button onClick={handleSaveProject} disabled={isSaving || !projectTitle}>
                             {isSaving ? <Loader2 className="animate-spin" /> : <Save />}
-                            Save Project
+                            {projectId ? 'Update Project' : 'Save Project'}
                         </Button>
-                        <Button asChild className="w-full" variant="outline">
-                        <a href={audioUrl} download={`${projectTitle.replace(/\s/g, '_') || 'podcast'}.wav`}>
-                            <Download className="mr-2 h-4 w-4" />
-                            Download .wav
-                        </a>
-                        </Button>
+                        {audioUrl && (
+                          <Button asChild className="w-full" variant="outline">
+                          <a href={audioUrl} download={`${projectTitle.replace(/\s/g, '_') || 'podcast'}.wav`}>
+                              <Download className="mr-2 h-4 w-4" />
+                              Download .wav
+                          </a>
+                          </Button>
+                        )}
                     </div>
-                  </>
                 )}
               </CardContent>
             </Card>
