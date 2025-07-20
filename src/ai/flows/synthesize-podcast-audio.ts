@@ -47,26 +47,34 @@ const synthesizePodcastAudioFlow = ai.defineFlow(
         speakerVoiceConfigs: [] as any
     }
     let prompt = '';
+    const uniqueSpeakers = new Set<string>();
+
     for (const segment of segments) {
       const [speaker, text] = segment.split(/:(.*)/s).map(s => s.trim());
       if (!speaker || !text) {
         continue;
       }
-
-      const voice = voiceConfig[speaker]?.voiceName;
-      if (!voice) {
-        console.warn(`No voice configured for speaker: ${speaker}, skipping segment.`);
-        continue;
-      }
-
-      multiSpeakerVoiceConfig.speakerVoiceConfigs.push({
-        speaker: speaker,
-        voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: voice },
-        },
-      });
-
+      uniqueSpeakers.add(speaker);
       prompt += `${speaker}: ${text}\n`;
+    }
+
+    // Build the voice configuration for all unique speakers found
+    for (const speaker of Array.from(uniqueSpeakers)) {
+        const voice = voiceConfig[speaker]?.voiceName;
+        if (!voice) {
+          console.warn(`No voice configured for speaker: ${speaker}, using a default or skipping.`);
+          continue; // Or assign a default voice
+        }
+        multiSpeakerVoiceConfig.speakerVoiceConfigs.push({
+            speaker: speaker,
+            voiceConfig: {
+                prebuiltVoiceConfig: { voiceName: voice },
+            },
+        });
+    }
+
+    if (!prompt.trim()) {
+      throw new Error("The script is empty or could not be parsed into valid speaker segments. Please ensure the script format is 'Speaker: Text'.");
     }
     
     const {media} = await ai.generate({
@@ -120,4 +128,3 @@ async function toWav(
         writer.end();
     });
 }
-
