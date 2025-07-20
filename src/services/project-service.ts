@@ -20,12 +20,13 @@ export interface Project extends ProjectData {
     createdAt: Date;
 }
 
-export async function saveProject(projectData: ProjectData): Promise<void> {
+export async function saveProject(projectData: ProjectData): Promise<string> {
     try {
-        await addDoc(collection(db, 'projects'), {
+        const docRef = await addDoc(collection(db, 'projects'), {
             ...projectData,
             createdAt: serverTimestamp(),
         });
+        return docRef.id;
     } catch (error) {
         console.error("Error saving project to Firestore: ", error);
         throw new Error("Could not save project.");

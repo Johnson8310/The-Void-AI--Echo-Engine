@@ -159,12 +159,12 @@ export default function CreatePodcastPage() {
         if(projectId) {
             await updateProject(projectId, projectData);
             toast({ title: "Project Updated!", description: `"${projectTitle}" has been updated successfully.` });
+            router.push("/projects");
         } else {
-            await saveProject(projectData);
+            const newProjectId = await saveProject(projectData);
             toast({ title: "Project Saved!", description: `"${projectTitle}" has been saved successfully.` });
+            router.push(`/create?projectId=${newProjectId}`);
         }
-
-        router.push("/projects");
     } catch (error) {
         console.error("Failed to save project:", error);
         toast({ title: "Save Failed", description: "An error occurred while saving the project.", variant: "destructive" });
