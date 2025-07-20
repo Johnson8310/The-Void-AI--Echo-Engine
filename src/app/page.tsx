@@ -27,16 +27,18 @@ export default function DashboardPage() {
             </Link>
           </CardContent>
         </Card>
-        <Card className="border-dashed">
+        <Card className="flex flex-col">
           <CardHeader>
             <CardTitle className="flex items-center gap-3">
-              <Library className="h-8 w-8 text-muted-foreground" />
+              <Library className="h-8 w-8 text-primary" />
               My Projects
             </CardTitle>
             <CardDescription>View and manage your saved podcasts.</CardDescription>
           </CardHeader>
-           <CardContent>
-            <p className="text-sm text-muted-foreground">Coming soon.</p>
+           <CardContent className="flex-1 flex items-end">
+            <Link href="/projects" passHref className="w-full">
+                <Button variant="outline" className="w-full">View Projects</Button>
+            </Link>
           </CardContent>
         </Card>
          <Card className="border-dashed">

@@ -1,23 +1,30 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { generatePodcastScript } from "@/ai/flows/generate-podcast-script";
 import { synthesizePodcastAudio } from "@/ai/flows/synthesize-podcast-audio";
+import { saveProject } from "@/services/project-service";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { AI_VOICES } from "@/constants/voices";
-import { Loader2, Mic, FileText, Download, Play, Wand2 } from "lucide-react";
+import { Loader2, Mic, FileText, Download, Play, Wand2, Save } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 type VoiceConfig = Record<string, { voiceName: string }>;
 
 export default function CreatePodcastPage() {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const router = useRouter();
 
+  const [projectTitle, setProjectTitle] = useState("");
   const [documentContent, setDocumentContent] = useState("");
   const [script, setScript] = useState("");
   const [voiceConfig, setVoiceConfig] = useState<VoiceConfig>({});
@@ -25,6 +32,7 @@ export default function CreatePodcastPage() {
 
   const [isLoadingScript, setIsLoadingScript] = useState(false);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const speakers = useMemo(() => {
     if (!script) return [];
@@ -65,6 +73,9 @@ export default function CreatePodcastPage() {
     try {
       const result = await generatePodcastScript({ documentContent });
       setScript(result.podcastScript);
+      if (!projectTitle) {
+        setProjectTitle("New Podcast Project");
+      }
     } catch (error) {
       console.error(error);
       toast({ title: "Script Generation Failed", description: "An error occurred while generating the script.", variant: "destructive" });
@@ -95,6 +106,35 @@ export default function CreatePodcastPage() {
       setIsLoadingAudio(false);
     }
   };
+
+  const handleSaveProject = async () => {
+    if (!user) {
+        toast({ title: "Authentication Error", description: "You must be logged in to save a project.", variant: "destructive" });
+        return;
+    }
+    if (!projectTitle.trim()) {
+        toast({ title: "Save Error", description: "Project title cannot be empty.", variant: "destructive" });
+        return;
+    }
+    setIsSaving(true);
+    try {
+        await saveProject({
+            title: projectTitle,
+            originalContent: documentContent,
+            script,
+            voiceConfig,
+            audioUrl,
+            userId: user.uid,
+        });
+        toast({ title: "Project Saved!", description: `"${projectTitle}" has been saved successfully.` });
+        router.push("/projects");
+    } catch (error) {
+        console.error("Failed to save project:", error);
+        toast({ title: "Save Failed", description: "An error occurred while saving the project.", variant: "destructive" });
+    } finally {
+        setIsSaving(false);
+    }
+  }
 
   const handleVoiceChange = (speaker: string, voiceName: string) => {
     setVoiceConfig(prev => ({ ...prev, [speaker]: { voiceName } }));
@@ -191,7 +231,7 @@ export default function CreatePodcastPage() {
           {(isLoadingAudio || audioUrl) && (
             <Card>
               <CardHeader>
-                <CardTitle>4. Preview & Export</CardTitle>
+                <CardTitle>4. Preview &amp; Export</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col gap-4 items-center">
                 {isLoadingAudio && (
@@ -203,12 +243,22 @@ export default function CreatePodcastPage() {
                 {audioUrl && !isLoadingAudio && (
                   <>
                     <audio controls src={audioUrl} className="w-full">Your browser does not support the audio element.</audio>
-                    <Button asChild className="w-full">
-                      <a href={audioUrl} download="void-ai-podcast.wav">
-                        <Download className="mr-2 h-4 w-4" />
-                        Download .wav
-                      </a>
-                    </Button>
+                    <div className="w-full flex flex-col gap-2">
+                        <div className="space-y-2">
+                            <Label htmlFor="project-title">Project Title</Label>
+                            <Input id="project-title" value={projectTitle} onChange={e => setProjectTitle(e.target.value)} placeholder="Enter project title" />
+                        </div>
+                        <Button onClick={handleSaveProject} disabled={isSaving || !projectTitle}>
+                            {isSaving ? <Loader2 className="animate-spin" /> : <Save />}
+                            Save Project
+                        </Button>
+                        <Button asChild className="w-full" variant="outline">
+                        <a href={audioUrl} download={`${projectTitle.replace(/\s/g, '_') || 'podcast'}.wav`}>
+                            <Download className="mr-2 h-4 w-4" />
+                            Download .wav
+                        </a>
+                        </Button>
+                    </div>
                   </>
                 )}
               </CardContent>
