@@ -43,9 +43,6 @@ const synthesizePodcastAudioFlow = ai.defineFlow(
     // Split the script into segments based on speaker cues.
     const segments = script.split(/\n(?=[A-Za-z0-9 ]+:)/);
 
-    let multiSpeakerVoiceConfig = {
-        speakerVoiceConfigs: [] as any
-    }
     let prompt = '';
     const uniqueSpeakers = new Set<string>();
 
@@ -57,33 +54,48 @@ const synthesizePodcastAudioFlow = ai.defineFlow(
       uniqueSpeakers.add(speaker);
       prompt += `${speaker}: ${text}\n`;
     }
-
-    // Build the voice configuration for all unique speakers found
-    for (const speaker of Array.from(uniqueSpeakers)) {
-        const voice = voiceConfig[speaker]?.voiceName;
-        if (!voice) {
-          console.warn(`No voice configured for speaker: ${speaker}, using a default or skipping.`);
-          continue; // Or assign a default voice
-        }
-        multiSpeakerVoiceConfig.speakerVoiceConfigs.push({
-            speaker: speaker,
-            voiceConfig: {
-                prebuiltVoiceConfig: { voiceName: voice },
-            },
-        });
-    }
-
+    
     if (!prompt.trim()) {
       throw new Error("The script is empty or could not be parsed into valid speaker segments. Please ensure the script format is 'Speaker: Text'.");
+    }
+
+    let speechConfig: any;
+    const speakersArray = Array.from(uniqueSpeakers);
+
+    if (speakersArray.length > 1) {
+        // Multi-speaker logic
+        const speakerVoiceConfigs = [];
+        for (const speaker of speakersArray) {
+            const voice = voiceConfig[speaker]?.voiceName;
+            if (!voice) {
+              console.warn(`No voice configured for speaker: ${speaker}, skipping.`);
+              continue; 
+            }
+            speakerVoiceConfigs.push({
+                speaker: speaker,
+                voiceConfig: {
+                    prebuiltVoiceConfig: { voiceName: voice },
+                },
+            });
+        }
+        speechConfig = { multiSpeakerVoiceConfig: { speakerVoiceConfigs } };
+    } else if (speakersArray.length === 1) {
+        // Single-speaker logic
+        const speaker = speakersArray[0];
+        const voice = voiceConfig[speaker]?.voiceName;
+        if (!voice) {
+            throw new Error(`No voice configured for the only speaker: ${speaker}`);
+        }
+        speechConfig = { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } };
+    } else {
+         throw new Error("No speakers found in the script.");
     }
     
     const {media} = await ai.generate({
       model: 'googleai/gemini-2.5-flash-preview-tts',
       config: {
         responseModalities: ['AUDIO'],
-        speechConfig: {
-            multiSpeakerVoiceConfig: multiSpeakerVoiceConfig,
-        },
+        speechConfig: speechConfig,
       },
       prompt: prompt,
     });
