@@ -1,7 +1,6 @@
 import {genkit} from 'genkit';
 import {googleAI} from '@genkit-ai/googleai';
-import {firebase} from '@genkit-ai/firebase';
-import {devLogger} from 'genkit/dev';
+import {firebase} from '@genkit-ai/firebase/plugin';
 
 export const ai = genkit({
   plugins: [
@@ -9,9 +8,8 @@ export const ai = genkit({
     googleAI({
       apiVersion: 'v1beta',
     }),
-    devLogger(),
   ],
-  logSinks: [devLogger],
+  logSinks: [],
   enableTracingAndMetrics: true,
   flowStateStore: 'firebase',
   traceStore: 'firebase',
