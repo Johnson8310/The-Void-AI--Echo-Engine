@@ -7,11 +7,8 @@ export default function ApiAccessPage() {
   'YOUR_APP_URL/api/v1/synthesize' \\
   -H 'Content-Type: application/json' \\
   -d '{
-    "script": "Speaker 1: Hello world! This is a test. Speaker 2: And this is the second speaker.",
-    "voiceConfig": {
-      "Speaker 1": { "voiceName": "algenib" },
-      "Speaker 2": { "voiceName": "zephyr" }
-    }
+    "script": "Host: Hello world! This is a test. Expert: And this is the second speaker.",
+    "voiceConfig": {}
   }'`;
   
   const responseExample = `{
@@ -30,16 +27,16 @@ export default function ApiAccessPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Code className="text-primary" />
-            Text-to-Speech API
+            Text-to-Speech API (ElevenLabs)
           </CardTitle>
           <CardDescription>
-            Unlock programmatic access to our voice synthesis engine.
+            Unlock programmatic access to our voice synthesis engine, now powered by ElevenLabs.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <section className="space-y-2">
             <h3 className="font-semibold flex items-center gap-2"><Badge>POST</Badge> <span>/api/v1/synthesize</span></h3>
-            <p className="text-sm text-muted-foreground">This endpoint converts a script with speaker cues into a WAV audio file, returned as a base64 data URI.</p>
+            <p className="text-sm text-muted-foreground">This endpoint converts a script into a WAV audio file, returned as a base64 data URI.</p>
           </section>
 
           <section className="space-y-2">
@@ -49,16 +46,14 @@ export default function ApiAccessPage() {
                 <code className="text-sm font-mono whitespace-pre-wrap">
                     {`{
   "script": "<string>",
-  "voiceConfig": {
-    "<SpeakerName>": { "voiceName": "<VoiceModelName>" }
-  }
+  "voiceConfig": {}
 }`}
                 </code>
                 </CardContent>
             </Card>
             <ul className="text-sm list-disc pl-5 space-y-1 text-muted-foreground">
-              <li><code className="font-mono text-xs bg-muted p-1 rounded">script</code>: The full podcast script. Use speaker cues like "Speaker Name: message".</li>
-              <li><code className="font-mono text-xs bg-muted p-1 rounded">voiceConfig</code>: An object mapping each speaker name from the script to a voice model.</li>
+              <li><code className="font-mono text-xs bg-muted p-1 rounded">script</code>: The full podcast script. Speaker cues are optional.</li>
+              <li><code className="font-mono text-xs bg-muted p-1 rounded">voiceConfig</code>: This field is currently ignored, as the system uses a default voice from ElevenLabs.</li>
             </ul>
           </section>
 

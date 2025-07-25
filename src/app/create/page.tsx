@@ -6,14 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { generatePodcastScript } from "@/ai/flows/generate-podcast-script";
 import { synthesizePodcastAudio } from "@/ai/flows/synthesize-podcast-audio";
 import { saveProject, getProject, updateProject, Project } from "@/services/project-service";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { AI_VOICES } from "@/constants/voices";
 import { Loader2, Mic, FileText, Download, Play, Wand2, Save } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
@@ -70,26 +68,6 @@ export default function CreatePodcastPage() {
     return uniqueSpeakers;
   }, [script]);
 
-  useEffect(() => {
-    if (isLoadingProject) return; 
-    
-    const newConfig: VoiceConfig = {};
-    let configUpdated = false;
-
-    speakers.forEach((speaker, index) => {
-      if (!voiceConfig[speaker]) {
-        newConfig[speaker] = { voiceName: AI_VOICES[index % AI_VOICES.length].value };
-        configUpdated = true;
-      } else {
-        newConfig[speaker] = voiceConfig[speaker];
-      }
-    });
-
-    if (configUpdated || Object.keys(voiceConfig).length !== speakers.length) {
-        setVoiceConfig(newConfig);
-    }
-  }, [speakers, voiceConfig, isLoadingProject]);
-
   const handleGenerateScript = async () => {
     if (!documentContent.trim()) {
       toast({ title: "Error", description: "Document content cannot be empty.", variant: "destructive" });
@@ -118,19 +96,15 @@ export default function CreatePodcastPage() {
       toast({ title: "Error", description: "Script cannot be empty.", variant: "destructive" });
       return;
     }
-    if (Object.keys(voiceConfig).length !== speakers.length) {
-      toast({ title: "Error", description: "Please assign a voice to all speakers.", variant: "destructive" });
-      return;
-    }
     setIsLoadingAudio(true);
     setAudioUrl(null);
     try {
       const result = await synthesizePodcastAudio({ script, voiceConfig });
       setAudioUrl(result.podcastAudioUri);
-      toast({ title: "Success!", description: "Your podcast audio has been generated." });
-    } catch (error) {
+      toast({ title: "Success!", description: "Your podcast audio has been generated with ElevenLabs." });
+    } catch (error: any) {
       console.error(error);
-      toast({ title: "Audio Synthesis Failed", description: "An error occurred while synthesizing the audio.", variant: "destructive" });
+      toast({ title: "Audio Synthesis Failed", description: error.message || "An error occurred while synthesizing the audio.", variant: "destructive" });
     } finally {
       setIsLoadingAudio(false);
     }
@@ -173,11 +147,7 @@ export default function CreatePodcastPage() {
     }
   }
 
-  const handleVoiceChange = (speaker: string, voiceName: string) => {
-    setVoiceConfig(prev => ({ ...prev, [speaker]: { voiceName } }));
-  };
-
-  const isSynthesizeDisabled = isLoadingAudio || !script || Object.keys(voiceConfig).length !== speakers.length;
+  const isSynthesizeDisabled = isLoadingAudio || !script;
 
   if (isLoadingProject) {
       return (
@@ -239,32 +209,19 @@ export default function CreatePodcastPage() {
           <Card>
             <CardHeader>
               <CardTitle>3. Production Studio</CardTitle>
-              <CardDescription>Assign voices and generate your audio.</CardDescription>
+              <CardDescription>Generate your audio with ElevenLabs.</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-6">
-              {speakers.length > 0 ? (
+              {speakers.length > 0 && (
                 <div className="space-y-4">
                   <h3 className="font-semibold">Voice Assignment</h3>
-                  {speakers.map((speaker) => (
-                    <div key={speaker} className="space-y-2">
-                      <Label htmlFor={`voice-${speaker}`}>{speaker}</Label>
-                      <Select
-                        value={voiceConfig[speaker]?.voiceName || ''}
-                        onValueChange={(value) => handleVoiceChange(speaker, value)}
-                      >
-                        <SelectTrigger id={`voice-${speaker}`}><SelectValue placeholder="Select a voice" /></SelectTrigger>
-                        <SelectContent>
-                          {AI_VOICES.map(voice => <SelectItem key={voice.value} value={voice.value}>{voice.name}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  ))}
+                  <p className="text-sm text-muted-foreground">Voice customization is not yet available for ElevenLabs. A default voice will be used.</p>
                 </div>
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">Generate a script to see voice options.</p>
               )}
 
-              <Separator />
+              {speakers.length === 0 && script && (
+                 <p className="text-sm text-muted-foreground">A default voice from ElevenLabs will be used for this monologue.</p>
+              )}
 
               <Button onClick={handleSynthesizeAudio} disabled={isSynthesizeDisabled}>
                 {isLoadingAudio ? <Loader2 className="animate-spin" /> : <Play />}
@@ -282,7 +239,7 @@ export default function CreatePodcastPage() {
                 {isLoadingAudio && (
                   <div className="flex flex-col items-center gap-2 text-muted-foreground p-4">
                     <Loader2 className="animate-spin h-8 w-8 text-primary" />
-                    <span>Synthesizing audio...</span>
+                    <span>Synthesizing with ElevenLabs...</span>
                   </div>
                 )}
                 {audioUrl && !isLoadingAudio && (
