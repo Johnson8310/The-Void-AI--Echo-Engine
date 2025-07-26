@@ -35,7 +35,7 @@ const prompt = ai.definePrompt({
   output: {schema: GeneratePodcastScriptOutputSchema},
   prompt: `You are a podcast script writer. Your task is to convert the provided document content into a well-structured podcast script.
 
-The output must be a JSON object with a single key, "podcastScript".
+The entire output must be a single JSON object with a single key, "podcastScript". The value of this key should be a string containing the entire script.
 
 The script should include:
 1.  Clear speaker cues (e.g., "Host:", "Expert:", "Narrator:").
@@ -44,15 +44,15 @@ The script should include:
 
 Here is an example of the desired output format:
 {
-  "podcastScript": "Host: Welcome to the show!\\nExpert: Glad to be here.\\n..."
+  "podcastScript": "Host: Welcome to our show! Today we are discussing the future of AI.\\nExpert: It's a pleasure to be here. The future is both exciting and unpredictable."
 }
 
-Now, please process the following document content.
+Now, please process the following document content and generate the podcast script in the specified JSON format.
 
 Document Content:
 {{{documentContent}}}
 
-Remember to format your entire response as a single JSON object with the "podcastScript" key.`,
+Remember to format your entire response as a single JSON object with the "podcastScript" key. Do not include any text or formatting outside of the JSON object.`,
 });
 
 const generatePodcastScriptFlow = ai.defineFlow(
