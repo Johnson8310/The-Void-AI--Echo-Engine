@@ -91,7 +91,7 @@ export async function synthesizePodcastAudio(
 
   try {
     const audioStream = await elevenlabsClient.generate({
-      voice: 'Rachel',
+      voice: 'Adam',
       text: textToSynthesize,
       model_id: 'eleven_multilingual_v2',
       output_format: 'pcm_24000',
