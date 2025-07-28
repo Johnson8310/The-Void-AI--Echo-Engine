@@ -9,7 +9,7 @@
  */
 
 import {ai} from '@/ai/genkit';
-import { gemini15Flash } from 'genkit/models/gemini';
+import { gemini15Flash } from '@genkit-ai/googleai';
 import {z} from 'genkit';
 
 const GeneratePodcastScriptInputSchema = z.object({
