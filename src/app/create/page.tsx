@@ -15,10 +15,10 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2, Mic, FileText, Download, Play, Wand2, Save } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ELEVENLABS_VOICES } from "@/constants/elevenlabs-voices";
+import { AI_VOICES } from "@/constants/voices";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
-type VoiceConfig = Record<string, { voiceId: string }>;
+type VoiceConfig = Record<string, { voiceName: string }>;
 type SynthesisMode = "single" | "multiple";
 
 export default function CreatePodcastPage() {
@@ -34,7 +34,7 @@ export default function CreatePodcastPage() {
   const [voiceConfig, setVoiceConfig] = useState<VoiceConfig>({});
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [synthesisMode, setSynthesisMode] = useState<SynthesisMode>("single");
-  const [singleVoiceId, setSingleVoiceId] = useState<string>(ELEVENLABS_VOICES[0].voice_id);
+  const [singleVoiceName, setSingleVoiceName] = useState<string>(AI_VOICES[0].value);
 
 
   const [isLoadingScript, setIsLoadingScript] = useState(false);
@@ -53,8 +53,10 @@ export default function CreatePodcastPage() {
             setScript(project.script);
             setVoiceConfig(project.voiceConfig || {});
             setAudioUrl(project.audioUrl);
-            if (project.voiceConfig && Object.keys(project.voiceConfig).length > 1) {
+            if (project.voiceConfig && !project.voiceConfig['__default']) {
               setSynthesisMode("multiple");
+            } else if (project.voiceConfig && project.voiceConfig['__default']) {
+              setSingleVoiceName(project.voiceConfig['__default'].voiceName)
             }
           } else {
             toast({ title: "Error", description: "Project not found or you don't have access.", variant: "destructive" });
@@ -85,7 +87,7 @@ export default function CreatePodcastPage() {
       let changed = false;
       speakers.forEach(speaker => {
         if (!newConfig[speaker]) {
-          newConfig[speaker] = { voiceId: ELEVENLABS_VOICES[0].voice_id };
+          newConfig[speaker] = { voiceName: AI_VOICES[0].value };
           changed = true;
         }
       });
@@ -133,11 +135,11 @@ export default function CreatePodcastPage() {
         synthesisInput = {
             script,
             voiceConfig: {
-                __default: { voiceId: singleVoiceId }
+                __default: { voiceName: singleVoiceName }
             }
         };
     } else {
-        const missingVoices = speakers.filter(speaker => !voiceConfig[speaker]?.voiceId);
+        const missingVoices = speakers.filter(speaker => !voiceConfig[speaker]?.voiceName);
         if (missingVoices.length > 0) {
             toast({ title: "Voice configuration missing", description: `Please select a voice for all speakers: ${missingVoices.join(', ')}`, variant: "destructive" });
             setIsLoadingAudio(false);
@@ -152,7 +154,7 @@ export default function CreatePodcastPage() {
     try {
       const result = await synthesizePodcastAudio(synthesisInput);
       setAudioUrl(result.podcastAudioUri);
-      toast({ title: "Success!", description: "Your podcast audio has been generated with ElevenLabs." });
+      toast({ title: "Success!", description: "Your podcast audio has been generated." });
     } catch (error: any) {
       console.error(error);
       toast({ title: "Audio Synthesis Failed", description: error.message || "An error occurred while synthesizing the audio.", variant: "destructive" });
@@ -174,7 +176,7 @@ export default function CreatePodcastPage() {
     
     let finalVoiceConfig = voiceConfig;
     if (synthesisMode === 'single') {
-        finalVoiceConfig = { '__default': { voiceId: singleVoiceId } };
+        finalVoiceConfig = { '__default': { voiceName: singleVoiceName } };
     }
 
     try {
@@ -272,7 +274,7 @@ export default function CreatePodcastPage() {
           <Card>
             <CardHeader>
               <CardTitle>3. Production Studio</CardTitle>
-              <CardDescription>Generate your audio with ElevenLabs.</CardDescription>
+              <CardDescription>Generate your audio with AI voices.</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-6">
                 <RadioGroup value={synthesisMode} onValueChange={(v) => setSynthesisMode(v as SynthesisMode)} className="flex space-x-4">
@@ -289,13 +291,13 @@ export default function CreatePodcastPage() {
                 {synthesisMode === 'single' ? (
                     <div className="space-y-2">
                       <Label>Select AI Voice</Label>
-                      <Select value={singleVoiceId} onValueChange={setSingleVoiceId}>
+                      <Select value={singleVoiceName} onValueChange={setSingleVoiceName}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a voice" />
                         </SelectTrigger>
                         <SelectContent>
-                          {ELEVENLABS_VOICES.map((voice) => (
-                            <SelectItem key={voice.voice_id} value={voice.voice_id}>
+                          {AI_VOICES.map((voice) => (
+                            <SelectItem key={voice.value} value={voice.value}>
                               {voice.name}
                             </SelectItem>
                           ))}
@@ -314,15 +316,15 @@ export default function CreatePodcastPage() {
                             <div key={speaker} className="space-y-2">
                                 <Label>{speaker}</Label>
                                 <Select
-                                    value={voiceConfig[speaker]?.voiceId || ''}
-                                    onValueChange={voiceId => setVoiceConfig(prev => ({...prev, [speaker]: {voiceId}}))}
+                                    value={voiceConfig[speaker]?.voiceName || ''}
+                                    onValueChange={voiceName => setVoiceConfig(prev => ({...prev, [speaker]: {voiceName}}))}
                                 >
                                     <SelectTrigger>
                                         <SelectValue placeholder={`Select voice for ${speaker}`} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {ELEVENLABS_VOICES.map((voice) => (
-                                            <SelectItem key={voice.voice_id} value={voice.voice_id}>
+                                        {AI_VOICES.map((voice) => (
+                                            <SelectItem key={voice.value} value={voice.value}>
                                             {voice.name}
                                             </SelectItem>
                                         ))}
@@ -352,7 +354,7 @@ export default function CreatePodcastPage() {
                 {isLoadingAudio && (
                   <div className="flex flex-col items-center gap-2 text-muted-foreground p-4">
                     <Loader2 className="animate-spin h-8 w-8 text-primary" />
-                    <span>Synthesizing with ElevenLabs...</span>
+                    <span>Synthesizing...</span>
                   </div>
                 )}
                 {audioUrl && !isLoadingAudio && (

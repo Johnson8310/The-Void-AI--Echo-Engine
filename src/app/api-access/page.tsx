@@ -10,8 +10,8 @@ export default function ApiAccessPage() {
   -d '{
     "script": "Host: Hello world! This is a test. Expert: And this is the second speaker.",
     "voiceConfig": {
-      "Host": { "voiceId": "21m00Tcm4TlvDq8ikWAM" },
-      "Expert": { "voiceId": "2EiwWnXFnvU5JabPnv8n" }
+      "Host": { "voiceName": "algenib" },
+      "Expert": { "voiceName": "gacrux" }
     }
   }'`;
 
@@ -21,7 +21,7 @@ export default function ApiAccessPage() {
   -d '{
     "script": "Host: Hello everyone. Welcome to the show.",
     "voiceConfig": {
-      "__default": { "voiceId": "21m00Tcm4TlvDq8ikWAM" }
+      "__default": { "voiceName": "zephyr" }
     }
   }'`;
   
@@ -41,7 +41,7 @@ export default function ApiAccessPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Code className="text-primary" />
-            Text-to-Speech API (ElevenLabs)
+            Text-to-Speech API (Google AI)
           </CardTitle>
           <CardDescription>
             Unlock programmatic access to our multi-voice synthesis engine.
@@ -61,9 +61,9 @@ export default function ApiAccessPage() {
                     {`{
   "script": "<string>",
   "voiceConfig": {
-    "SpeakerName1": { "voiceId": "<string>" },
-    "SpeakerName2": { "voiceId": "<string>" },
-    "__default": { "voiceId": "<string>" }
+    "SpeakerName1": { "voiceName": "<string>" },
+    "SpeakerName2": { "voiceName": "<string>" },
+    "__default": { "voiceName": "<string>" }
   }
 }`}
                 </code>
@@ -71,7 +71,7 @@ export default function ApiAccessPage() {
             </Card>
             <ul className="text-sm list-disc pl-5 space-y-1 text-muted-foreground">
               <li><code className="font-mono text-xs bg-muted p-1 rounded">script</code>: The full podcast script. Speaker cues (e.g., "Host:") are required for multi-voice synthesis.</li>
-              <li><code className="font-mono text-xs bg-muted p-1 rounded">voiceConfig</code>: An object mapping speaker names from the script to their desired ElevenLabs Voice ID.</li>
+              <li><code className="font-mono text-xs bg-muted p-1 rounded">voiceConfig</code>: An object mapping speaker names from the script to their desired AI voice name.</li>
               <li>Use the special <code className="font-mono text-xs bg-muted p-1 rounded">__default</code> key to specify a single voice for the entire script or for any speakers not explicitly defined in the config.</li>
             </ul>
           </section>

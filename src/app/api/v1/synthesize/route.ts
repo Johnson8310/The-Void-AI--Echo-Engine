@@ -7,7 +7,7 @@ import { z } from "zod";
 const SynthesizeRequestSchema = z.object({
   script: z.string().min(1, { message: "Script cannot be empty." }),
   voiceConfig: z.record(z.string(), z.object({
-    voiceId: z.string(),
+    voiceName: z.string(),
   })).min(1, { message: "At least one voice must be configured." }),
 });
 
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     console.error("API Error in /api/v1/synthesize:", error);
     
     const errorMessage = error.message || "An unexpected error occurred during audio synthesis.";
-    const statusCode = error.message.includes("configured for speaker") || error.message.includes("parsed into valid speaker segments") ? 400 : 500;
+    const statusCode = error.message.includes("parsed into valid speaker segments") ? 400 : 500;
     
     return NextResponse.json({ error: errorMessage }, { status: statusCode });
   }

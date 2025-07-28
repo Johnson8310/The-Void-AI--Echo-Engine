@@ -10,14 +10,15 @@ export interface ProjectData {
   title: string;
   originalContent: string;
   script: string;
-  voiceConfig: Record<string, { voiceId: string }>;
+  voiceConfig: Record<string, { voiceName: string }>;
   audioUrl: string | null;
   userId: string;
 }
 
-export interface Project extends Omit<ProjectData, 'userId'> {
+export interface Project extends Omit<ProjectData, 'userId' | 'voiceConfig'> {
     id: string;
     createdAt: Date;
+    voiceConfig: Record<string, { voiceName: string }>;
 }
 
 export async function saveProject(projectData: ProjectData): Promise<string> {
@@ -89,6 +90,7 @@ export async function getProject(id: string, userId: string): Promise<(Project &
         return {
             id: projectSnap.id,
             ...projectData,
+            voiceConfig: projectData.voiceConfig || {},
             createdAt: (projectData.createdAt as Timestamp).toDate(),
         } as (Project & {userId: string});
 
