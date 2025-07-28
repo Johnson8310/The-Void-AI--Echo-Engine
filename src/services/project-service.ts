@@ -10,12 +10,12 @@ export interface ProjectData {
   title: string;
   originalContent: string;
   script: string;
-  voiceConfig: Record<string, { voiceName: string }>;
+  voiceConfig: Record<string, { voiceId: string }>;
   audioUrl: string | null;
   userId: string;
 }
 
-export interface Project extends ProjectData {
+export interface Project extends Omit<ProjectData, 'userId'> {
     id: string;
     createdAt: Date;
 }
@@ -55,7 +55,11 @@ export async function getProjects(userId: string): Promise<Project[]> {
             const data = doc.data();
             return {
                 id: doc.id,
-                ...data,
+                title: data.title,
+                originalContent: data.originalContent,
+                script: data.script,
+                voiceConfig: data.voiceConfig,
+                audioUrl: data.audioUrl,
                 createdAt: (data.createdAt as Timestamp).toDate(),
             } as Project;
         }).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
@@ -66,7 +70,7 @@ export async function getProjects(userId: string): Promise<Project[]> {
     }
 }
 
-export async function getProject(id: string, userId: string): Promise<Project | null> {
+export async function getProject(id: string, userId: string): Promise<(Project & {userId: string}) | null> {
     try {
         const projectRef = doc(db, 'projects', id);
         const projectSnap = await getDoc(projectRef);
@@ -78,7 +82,6 @@ export async function getProject(id: string, userId: string): Promise<Project | 
         const projectData = projectSnap.data();
 
         if (projectData.userId !== userId) {
-            // This is a security check to ensure users can't access other users' projects
             console.error('User does not have access to this project');
             return null;
         }
@@ -87,7 +90,7 @@ export async function getProject(id: string, userId: string): Promise<Project | 
             id: projectSnap.id,
             ...projectData,
             createdAt: (projectData.createdAt as Timestamp).toDate(),
-        } as Project;
+        } as (Project & {userId: string});
 
     } catch (error) {
         console.error("Error fetching project from Firestore: ", error);

@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Code, Terminal } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +9,20 @@ export default function ApiAccessPage() {
   -H 'Content-Type: application/json' \\
   -d '{
     "script": "Host: Hello world! This is a test. Expert: And this is the second speaker.",
-    "voiceConfig": {}
+    "voiceConfig": {
+      "Host": { "voiceId": "21m00Tcm4TlvDq8ikWAM" },
+      "Expert": { "voiceId": "2EiwWnXFnvU5JabPnv8n" }
+    }
+  }'`;
+
+  const singleVoiceCurlExample = `curl -X POST \\
+  'YOUR_APP_URL/api/v1/synthesize' \\
+  -H 'Content-Type: application/json' \\
+  -d '{
+    "script": "Host: Hello everyone. Welcome to the show.",
+    "voiceConfig": {
+      "__default": { "voiceId": "21m00Tcm4TlvDq8ikWAM" }
+    }
   }'`;
   
   const responseExample = `{
@@ -30,7 +44,7 @@ export default function ApiAccessPage() {
             Text-to-Speech API (ElevenLabs)
           </CardTitle>
           <CardDescription>
-            Unlock programmatic access to our voice synthesis engine, now powered by ElevenLabs.
+            Unlock programmatic access to our multi-voice synthesis engine.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -46,21 +60,33 @@ export default function ApiAccessPage() {
                 <code className="text-sm font-mono whitespace-pre-wrap">
                     {`{
   "script": "<string>",
-  "voiceConfig": {}
+  "voiceConfig": {
+    "SpeakerName1": { "voiceId": "<string>" },
+    "SpeakerName2": { "voiceId": "<string>" },
+    "__default": { "voiceId": "<string>" }
+  }
 }`}
                 </code>
                 </CardContent>
             </Card>
             <ul className="text-sm list-disc pl-5 space-y-1 text-muted-foreground">
-              <li><code className="font-mono text-xs bg-muted p-1 rounded">script</code>: The full podcast script. Speaker cues are optional.</li>
-              <li><code className="font-mono text-xs bg-muted p-1 rounded">voiceConfig</code>: This field is currently ignored, as the system uses a default voice from ElevenLabs.</li>
+              <li><code className="font-mono text-xs bg-muted p-1 rounded">script</code>: The full podcast script. Speaker cues (e.g., "Host:") are required for multi-voice synthesis.</li>
+              <li><code className="font-mono text-xs bg-muted p-1 rounded">voiceConfig</code>: An object mapping speaker names from the script to their desired ElevenLabs Voice ID.</li>
+              <li>Use the special <code className="font-mono text-xs bg-muted p-1 rounded">__default</code> key to specify a single voice for the entire script or for any speakers not explicitly defined in the config.</li>
             </ul>
           </section>
 
           <section className="space-y-2">
-            <h3 className="font-semibold flex items-center gap-2"><Terminal/> Example Request (cURL)</h3>
+            <h3 className="font-semibold flex items-center gap-2"><Terminal/> Multi-Voice Example (cURL)</h3>
             <div className="bg-card p-4 rounded-md text-sm font-mono overflow-x-auto text-white bg-black">
                 <pre><code>{curlExample}</code></pre>
+            </div>
+          </section>
+
+           <section className="space-y-2">
+            <h3 className="font-semibold flex items-center gap-2"><Terminal/> Single-Voice Example (cURL)</h3>
+            <div className="bg-card p-4 rounded-md text-sm font-mono overflow-x-auto text-white bg-black">
+                <pre><code>{singleVoiceCurlExample}</code></pre>
             </div>
           </section>
           

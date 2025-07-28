@@ -1,5 +1,4 @@
 
-// Synthesize Podcast Audio
 'use server';
 /**
  * @fileOverview Generates the podcast audio file from the edited script using the selected AI voices.
@@ -20,7 +19,11 @@ const elevenlabsClient = new ElevenLabsClient({
 
 const SynthesizePodcastAudioInputSchema = z.object({
   script: z.string().describe('The edited script with speaker cues.'),
-  voiceId: z.string().describe('The ID of the ElevenLabs voice to use.'),
+  voiceConfig: z
+    .record(z.string(), z.object({voiceId: z.string()}))
+    .describe(
+      'A map of speaker names to their ElevenLabs voice IDs. A special `__default` key can be used for a single voice.'
+    ),
 });
 
 export type SynthesizePodcastAudioInput = z.infer<
@@ -39,6 +42,11 @@ export type SynthesizePodcastAudioOutput = z.infer<
   typeof SynthesizePodcastAudioOutputSchema
 >;
 
+interface Segment {
+  text: string;
+  voiceId: string;
+}
+
 async function streamToBuffer(stream: Readable): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
@@ -51,7 +59,7 @@ async function streamToBuffer(stream: Readable): Promise<Buffer> {
 export async function synthesizePodcastAudio(
   input: SynthesizePodcastAudioInput
 ): Promise<SynthesizePodcastAudioOutput> {
-  const {script, voiceId} = input;
+  const {script, voiceConfig} = input;
 
   if (!process.env.ELEVENLABS_API_KEY) {
     throw new Error(
@@ -60,38 +68,56 @@ export async function synthesizePodcastAudio(
   }
 
   const lines = script.split('\n').filter((line) => line.trim() !== '');
-  let textToSynthesize = '';
+  const segments: Segment[] = [];
+  const defaultVoiceId = voiceConfig['__default']?.voiceId;
+
+  if (!defaultVoiceId && Object.keys(voiceConfig).length === 0) {
+     throw new Error(
+      'No voice configuration provided. Please select a default voice or voices for speakers.'
+    );
+  }
 
   for (const line of lines) {
     const match = line.match(/^([A-Za-z0-9_ -]+):\s*(.*)$/);
     if (match) {
+      const speaker = match[1].trim();
       const text = match[2].trim();
       if (text) {
-        textToSynthesize += text + '\n';
+        const voiceId = voiceConfig[speaker]?.voiceId || defaultVoiceId;
+        if (!voiceId) {
+          throw new Error(`Voice not configured for speaker: ${speaker}`);
+        }
+        segments.push({ text, voiceId });
       }
-    } else {
-      textToSynthesize += line + '\n';
+    } else if (defaultVoiceId && line.trim()) {
+      // Line without a speaker cue, use default voice
+      segments.push({ text: line.trim(), voiceId: defaultVoiceId });
     }
   }
 
-  if (!textToSynthesize.trim()) {
+  if (segments.length === 0) {
     throw new Error(
       "The script is empty or could not be parsed into valid speaker segments. Please ensure the script has text to speak."
     );
   }
 
   try {
-    const audioStream = await elevenlabsClient.generate({
-      voice: voiceId,
-      text: textToSynthesize,
-      model_id: 'eleven_multilingual_v2',
-      output_format: 'pcm_24000',
-    });
+    const audioBuffers: Buffer[] = [];
+    for (const segment of segments) {
+      const audioStream = await elevenlabsClient.generate({
+        voice: segment.voiceId,
+        text: segment.text,
+        model_id: 'eleven_multilingual_v2',
+        output_format: 'pcm_24000',
+      });
+      const buffer = await streamToBuffer(audioStream as Readable);
+      audioBuffers.push(buffer);
+    }
 
-    const audioBuffer = await streamToBuffer(audioStream as Readable);
+    const combinedBuffer = Buffer.concat(audioBuffers);
 
     const podcastAudioUri =
-      'data:audio/wav;base64,' + (await toWav(audioBuffer));
+      'data:audio/wav;base64,' + (await toWav(combinedBuffer));
     return {podcastAudioUri};
   } catch (error: any) {
     console.error('Error with ElevenLabs API:', error);
