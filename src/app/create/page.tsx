@@ -126,20 +126,26 @@ export default function CreatePodcastPage() {
     }
     setIsSaving(true);
     try {
-        const projectData = {
-            title: projectTitle,
-            originalContent: documentContent,
-            script,
-            voiceConfig,
-            audioUrl,
-            userId: user.uid,
-        };
-
         if(projectId) {
-            await updateProject(projectId, projectData);
+            const projectDataToUpdate = {
+                title: projectTitle,
+                originalContent: documentContent,
+                script,
+                voiceConfig,
+                audioUrl,
+            };
+            await updateProject(projectId, projectDataToUpdate);
             toast({ title: "Project Updated!", description: `"${projectTitle}" has been updated successfully.` });
             router.push("/projects");
         } else {
+            const projectData = {
+                title: projectTitle,
+                originalContent: documentContent,
+                script,
+                voiceConfig,
+                audioUrl,
+                userId: user.uid,
+            };
             const newProjectId = await saveProject(projectData);
             toast({ title: "Project Saved!", description: `"${projectTitle}" has been saved successfully.` });
             router.push(`/create?projectId=${newProjectId}`);
