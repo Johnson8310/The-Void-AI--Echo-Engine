@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -14,6 +15,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2, Mic, FileText, Download, Play, Wand2, Save } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ELEVENLABS_VOICES } from "@/constants/elevenlabs-voices";
 
 type VoiceConfig = Record<string, { voiceName: string }>;
 
@@ -29,6 +32,8 @@ export default function CreatePodcastPage() {
   const [script, setScript] = useState("");
   const [voiceConfig, setVoiceConfig] = useState<VoiceConfig>({});
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [selectedVoice, setSelectedVoice] = useState<string>(ELEVENLABS_VOICES[0].voice_id);
+
 
   const [isLoadingScript, setIsLoadingScript] = useState(false);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
@@ -99,7 +104,7 @@ export default function CreatePodcastPage() {
     setIsLoadingAudio(true);
     setAudioUrl(null);
     try {
-      const result = await synthesizePodcastAudio({ script, voiceConfig });
+      const result = await synthesizePodcastAudio({ script, voiceId: selectedVoice });
       setAudioUrl(result.podcastAudioUri);
       toast({ title: "Success!", description: "Your podcast audio has been generated with ElevenLabs." });
     } catch (error: any) {
@@ -212,17 +217,24 @@ export default function CreatePodcastPage() {
               <CardDescription>Generate your audio with ElevenLabs.</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-6">
-              {speakers.length > 0 && (
-                <div className="space-y-4">
-                  <h3 className="font-semibold">Voice Assignment</h3>
-                  <p className="text-sm text-muted-foreground">Voice customization is not yet available for ElevenLabs. A default voice will be used.</p>
+                <div className="space-y-2">
+                  <Label>Select AI Voice</Label>
+                  <Select value={selectedVoice} onValueChange={setSelectedVoice}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a voice" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ELEVENLABS_VOICES.map((voice) => (
+                        <SelectItem key={voice.voice_id} value={voice.voice_id}>
+                          {voice.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm text-muted-foreground">
+                    Choose a voice for your podcast.
+                  </p>
                 </div>
-              )}
-
-              {speakers.length === 0 && script && (
-                 <p className="text-sm text-muted-foreground">A default voice from ElevenLabs will be used for this monologue.</p>
-              )}
-
               <Button onClick={handleSynthesizeAudio} disabled={isSynthesizeDisabled}>
                 {isLoadingAudio ? <Loader2 className="animate-spin" /> : <Play />}
                 Synthesize Podcast

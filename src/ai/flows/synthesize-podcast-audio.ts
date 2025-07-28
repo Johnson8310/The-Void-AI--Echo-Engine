@@ -1,3 +1,4 @@
+
 // Synthesize Podcast Audio
 'use server';
 /**
@@ -19,17 +20,7 @@ const elevenlabsClient = new ElevenLabsClient({
 
 const SynthesizePodcastAudioInputSchema = z.object({
   script: z.string().describe('The edited script with speaker cues.'),
-  // voiceConfig is kept for schema compatibility but will not be used with ElevenLabs for now.
-  voiceConfig: z
-    .record(
-      z.string(),
-      z.object({
-        voiceName: z
-          .string()
-          .describe('The name of the AI voice to use for the speaker.'),
-      })
-    )
-    .describe('A map of speaker names to voice configurations.'),
+  voiceId: z.string().describe('The ID of the ElevenLabs voice to use.'),
 });
 
 export type SynthesizePodcastAudioInput = z.infer<
@@ -60,7 +51,7 @@ async function streamToBuffer(stream: Readable): Promise<Buffer> {
 export async function synthesizePodcastAudio(
   input: SynthesizePodcastAudioInput
 ): Promise<SynthesizePodcastAudioOutput> {
-  const {script} = input;
+  const {script, voiceId} = input;
 
   if (!process.env.ELEVENLABS_API_KEY) {
     throw new Error(
@@ -91,7 +82,7 @@ export async function synthesizePodcastAudio(
 
   try {
     const audioStream = await elevenlabsClient.generate({
-      voice: 'Adam',
+      voice: voiceId,
       text: textToSynthesize,
       model_id: 'eleven_multilingual_v2',
       output_format: 'pcm_24000',
