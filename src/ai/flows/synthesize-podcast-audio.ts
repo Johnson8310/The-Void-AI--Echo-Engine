@@ -10,10 +10,10 @@
 
 import {z} from 'zod';
 import wav from 'wav';
-import {elevenlabs} from 'elevenlabs';
+import { ElevenLabsClient } from 'elevenlabs';
 import {Readable} from 'stream';
 
-const elevenlabsClient = new elevenlabs({
+const elevenlabsClient = new ElevenLabsClient({
   apiKey: process.env.ELEVENLABS_API_KEY || '',
 });
 
