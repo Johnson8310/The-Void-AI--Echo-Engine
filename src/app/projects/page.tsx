@@ -27,6 +27,12 @@ export default function ProjectsPage() {
     }
   }, [user]);
 
+  const getRelativeDate = (project: Project) => {
+    const dateToCompare = project.updatedAt || project.createdAt;
+    const prefix = project.updatedAt ? 'Updated' : 'Created';
+    return `${prefix} ${formatDistanceToNow(dateToCompare, { addSuffix: true })}`;
+  }
+
   return (
     <div className="flex flex-col gap-8">
       <div>
@@ -71,7 +77,7 @@ export default function ProjectsPage() {
               <CardHeader>
                 <CardTitle className="truncate">{project.title}</CardTitle>
                 <CardDescription>
-                  Saved {formatDistanceToNow(project.createdAt, { addSuffix: true })}
+                  {getRelativeDate(project)}
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex-1 space-y-2">

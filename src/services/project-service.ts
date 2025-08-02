@@ -20,6 +20,7 @@ export interface ProjectData {
 export interface Project extends Omit<ProjectData, 'userId' | 'voiceConfig'> {
     id: string;
     createdAt: Date;
+    updatedAt?: Date;
     voiceConfig: Record<string, { voiceName: string }>;
 }
 
@@ -28,6 +29,7 @@ export async function saveProject(projectData: ProjectData): Promise<string> {
         const docRef = await addDoc(collection(db, 'projects'), {
             ...projectData,
             createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
         });
         return docRef.id;
     } catch (error) {
@@ -75,8 +77,9 @@ export async function getProjects(userId: string): Promise<Project[]> {
                 voiceConfig: data.voiceConfig,
                 audioUrl: data.audioUrl,
                 createdAt: (data.createdAt as Timestamp).toDate(),
+                updatedAt: data.updatedAt ? (data.updatedAt as Timestamp).toDate() : undefined,
             } as Project;
-        }).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        }).sort((a, b) => (b.updatedAt || b.createdAt).getTime() - (a.updatedAt || a.createdAt).getTime());
 
     } catch (error) {
         console.error("Error fetching projects from Firestore: ", error);
@@ -117,6 +120,7 @@ export async function getProject(id: string, userId: string): Promise<(Project &
             script: script || [],
             voiceConfig: projectData.voiceConfig || {},
             createdAt: (projectData.createdAt as Timestamp).toDate(),
+            updatedAt: projectData.updatedAt ? (projectData.updatedAt as Timestamp).toDate() : undefined,
         } as (Project & {userId: string});
 
     } catch (error) {
