@@ -1,7 +1,11 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Code, Terminal } from "lucide-react";
+import { Code, Terminal, Webhook, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function ApiAccessPage() {
   const curlExample = `curl -X POST \\
@@ -29,15 +33,26 @@ export default function ApiAccessPage() {
   "audioUrl": "data:audio/wav;base64,UklGRiS..."
 }`;
 
+  const webhookPayloadExample = `{
+  "eventId": "evt_12345",
+  "eventType": "synthesis.completed",
+  "projectId": "proj_abcde",
+  "createdAt": "2023-10-27T10:00:00Z",
+  "data": {
+    "audioUrl": "data:audio/wav;base64,UklGRiS...",
+    "title": "My First Podcast"
+  }
+}`;
+
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-4xl font-headline tracking-tight">API Access</h1>
+        <h1 className="text-4xl font-headline tracking-tight">API Access & Webhooks</h1>
         <p className="text-muted-foreground mt-2">
           Integrate The Void AI's synthesis engine into your own applications and workflows.
         </p>
       </div>
-      <Card className="mt-4">
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Code className="text-primary" />
@@ -98,6 +113,51 @@ export default function ApiAccessPage() {
             <p className="text-sm text-muted-foreground">The <code className="font-mono text-xs bg-muted p-1 rounded">audioUrl</code> is a base64-encoded data URI that can be used directly in an HTML <code className="font-mono text-xs bg-muted p-1 rounded">&lt;audio&gt;</code> tag.</p>
           </section>
 
+        </CardContent>
+      </Card>
+      
+      <Card className="border-dashed">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Webhook className="text-primary" />
+            Webhooks for Automation
+          </CardTitle>
+          <CardDescription>
+            Configure a webhook endpoint to receive real-time notifications about events, such as when audio synthesis is complete.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+            <div className="space-y-2">
+                <Label htmlFor="webhook-url">Webhook URL</Label>
+                <Input id="webhook-url" placeholder="https://yourapp.com/api/webhook" />
+            </div>
+            <div className="space-y-2">
+                <Label>Events to send</Label>
+                <div className="space-y-2 rounded-md border p-4">
+                    <div className="flex items-center space-x-2">
+                        <Checkbox id="event-complete"/>
+                        <Label htmlFor="event-complete" className="font-normal">
+                            <span className="font-mono text-xs bg-muted p-1 rounded">synthesis.completed</span> - When audio is successfully generated.
+                        </Label>
+                    </div>
+                     <div className="flex items-center space-x-2">
+                        <Checkbox id="event-failed"/>
+                        <Label htmlFor="event-failed" className="font-normal">
+                            <span className="font-mono text-xs bg-muted p-1 rounded">synthesis.failed</span> - When audio generation fails.
+                        </Label>
+                    </div>
+                </div>
+            </div>
+             <section className="space-y-2">
+                <h3 className="font-semibold">Example Payload</h3>
+                 <div className="bg-card p-4 rounded-md text-sm font-mono overflow-x-auto text-white bg-black">
+                    <pre><code>{webhookPayloadExample}</code></pre>
+                </div>
+            </section>
+            <div className="flex justify-between items-center">
+                <Button disabled>Save Webhook</Button>
+                <p className="text-sm text-muted-foreground">Webhook functionality is coming soon.</p>
+            </div>
         </CardContent>
       </Card>
     </div>

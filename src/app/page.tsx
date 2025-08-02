@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
-import { PlusCircle, MicVocal, Library, Code } from "lucide-react";
+import { PlusCircle, MicVocal, Library, Webhook } from "lucide-react";
 
 export default function DashboardPage() {
   return (
@@ -44,14 +44,14 @@ export default function DashboardPage() {
          <Card className="flex flex-col">
           <CardHeader>
             <CardTitle className="flex items-center gap-3">
-              <Code className="h-8 w-8 text-primary" />
+              <Webhook className="h-8 w-8 text-primary" />
               DEV & Pro Tools
             </CardTitle>
             <CardDescription>Integrate with our API and manage your settings.</CardDescription>
           </CardHeader>
           <CardContent className="flex-1 flex items-end">
             <Link href="/api-access" passHref className="w-full">
-                <Button variant="outline" className="w-full">Access API</Button>
+                <Button variant="outline" className="w-full">Access API & Webhooks</Button>
             </Link>
           </CardContent>
         </Card>
