@@ -10,10 +10,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { generatePodcastScript, GeneratePodcastScriptOutput, ScriptLine } from "@/ai/flows/generate-podcast-script";
 import { SynthesizePodcastAudioInput } from "@/ai/flows/synthesize-podcast-audio";
+import { analyzeScriptForCoaching, AnalyzeScriptOutput } from "@/ai/flows/sound-coach";
 import { saveProject, getProject, updateProject } from "@/services/project-service";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { Loader2, Mic, FileText, Download, Play, Wand2, Save, Quote, Info, Smile, Plus, Music, Sparkles, SlidersHorizontal } from "lucide-react";
+import { Loader2, Mic, FileText, Download, Play, Wand2, Save, Quote, Info, Smile, Plus, Music, Sparkles, SlidersHorizontal, BrainCircuit } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AI_VOICES } from "@/constants/voices";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -50,11 +51,13 @@ export default function CreatePodcastPage() {
   const [tone, setTone] = useState<string>(TONES[0]);
   const [addMusicAndSfx, setAddMusicAndSfx] = useState(false);
   const [activePreset, setActivePreset] = useState<string | null>(null);
+  const [coachingNotes, setCoachingNotes] = useState<AnalyzeScriptOutput['coachingNotes']>([]);
 
   const [isLoadingScript, setIsLoadingScript] = useState(false);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingProject, setIsLoadingProject] = useState(!!projectId);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   useEffect(() => {
     if (projectId && user) {
@@ -120,6 +123,7 @@ export default function CreatePodcastPage() {
     setSummary("");
     setAudioUrl(null);
     setVoiceConfig({});
+    setCoachingNotes([]);
     try {
       const result: GeneratePodcastScriptOutput = await generatePodcastScript({ documentContent, tone, addMusicAndSfx });
       setScript(result.script);
@@ -185,6 +189,25 @@ export default function CreatePodcastPage() {
       toast({ title: "Audio Synthesis Failed", description: error.message || "An error occurred while synthesizing the audio.", variant: "destructive" });
     } finally {
       setIsLoadingAudio(false);
+    }
+  };
+
+  const handleAnalyzeScript = async () => {
+    const scriptText = script.map(line => `${line.speaker}: ${line.line}`).join('\n');
+    if (!scriptText.trim()) {
+      toast({ title: "Error", description: "Script cannot be empty.", variant: "destructive" });
+      return;
+    }
+    setIsAnalyzing(true);
+    try {
+        const result = await analyzeScriptForCoaching({ script: scriptText });
+        setCoachingNotes(result.coachingNotes);
+        toast({ title: "Analysis Complete", description: "The AI coach has provided feedback." });
+    } catch (error) {
+        console.error("Failed to analyze script:", error);
+        toast({ title: "Analysis Failed", description: "Could not get feedback from the AI coach.", variant: "destructive" });
+    } finally {
+        setIsAnalyzing(false);
     }
   };
 
@@ -358,6 +381,30 @@ export default function CreatePodcastPage() {
               </CardContent>
             </Card>
           )}
+
+          {script.length > 0 && (
+             <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><BrainCircuit className="text-primary"/> AI Sound Coach</CardTitle>
+                    <CardDescription>Get feedback from our AI on how to improve your podcast's delivery and production.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Button onClick={handleAnalyzeScript} disabled={isAnalyzing}>
+                        {isAnalyzing ? <Loader2 className="animate-spin"/> : <Sparkles />}
+                        Analyze Script
+                    </Button>
+                    {coachingNotes.length > 0 && (
+                        <div className="mt-4 space-y-3">
+                            {coachingNotes.map((note, index) => (
+                                <div key={index} className="p-3 bg-muted/50 rounded-lg text-sm">
+                                    <span className="font-bold text-primary">{note.category} (Line ~{note.lineNumber}):</span> {note.note}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </CardContent>
+             </Card>
+          )}
         </div>
 
         <div className="lg:col-span-1 sticky top-24 flex flex-col gap-8">
@@ -480,5 +527,3 @@ export default function CreatePodcastPage() {
     </div>
   );
 }
-
-    
