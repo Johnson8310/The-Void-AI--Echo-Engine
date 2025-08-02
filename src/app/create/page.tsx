@@ -13,17 +13,24 @@ import { SynthesizePodcastAudioInput } from "@/ai/flows/synthesize-podcast-audio
 import { saveProject, getProject, updateProject } from "@/services/project-service";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { Loader2, Mic, FileText, Download, Play, Wand2, Save, Quote, Info, Smile, Plus, Music, Sparkles } from "lucide-react";
+import { Loader2, Mic, FileText, Download, Play, Wand2, Save, Quote, Info, Smile, Plus, Music, Sparkles, SlidersHorizontal } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AI_VOICES } from "@/constants/voices";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SceneBuilder } from "@/components/scene-builder";
 import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
 
 type VoiceConfig = Record<string, { voiceName: string }>;
 type SynthesisMode = "single" | "multiple";
 const TONES = ["Conversational", "Formal", "Humorous", "Dramatic", "Authoritative"];
 
+const PRESETS = [
+  { id: 'solo', name: 'Solo Monologue', tone: 'Conversational', addMusicAndSfx: false, description: "A single-speaker narrative." },
+  { id: 'interview', name: 'Interview', tone: 'Conversational', addMusicAndSfx: true, description: "A Q&A between a host and guest." },
+  { id: 'news', name: 'News Report', tone: 'Formal', addMusicAndSfx: true, description: "A structured, informative report." },
+  { id: 'story', name: 'Audio Drama', tone: 'Dramatic', addMusicAndSfx: true, description: "A rich, story-driven performance." },
+];
 
 export default function CreatePodcastPage() {
   const { toast } = useToast();
@@ -42,7 +49,7 @@ export default function CreatePodcastPage() {
   const [singleVoiceName, setSingleVoiceName] = useState<string>(AI_VOICES[0].value);
   const [tone, setTone] = useState<string>(TONES[0]);
   const [addMusicAndSfx, setAddMusicAndSfx] = useState(false);
-
+  const [activePreset, setActivePreset] = useState<string | null>(null);
 
   const [isLoadingScript, setIsLoadingScript] = useState(false);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
@@ -236,6 +243,16 @@ export default function CreatePodcastPage() {
     setScript(prev => [...prev, { speaker: speakers[0] || "New Speaker", line: "" }]);
   };
 
+  const handleSelectPreset = (presetId: string) => {
+    const preset = PRESETS.find(p => p.id === presetId);
+    if (preset) {
+        setTone(preset.tone);
+        setAddMusicAndSfx(preset.addMusicAndSfx);
+        setActivePreset(presetId);
+    }
+  };
+
+
   const isSynthesizeDisabled = isLoadingAudio || script.length === 0;
 
   if (isLoadingProject) {
@@ -257,17 +274,33 @@ export default function CreatePodcastPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><FileText className="text-primary"/> 1. Provide Your Content</CardTitle>
-              <CardDescription>Paste your document content below and our AI will generate a podcast script.</CardDescription>
+              <CardDescription>Paste your document content below. Use a preset for quick setup or configure manually.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <Textarea
                 placeholder="Paste your article, blog post, or any text here..."
                 value={documentContent}
                 onChange={(e) => setDocumentContent(e.target.value)}
-                rows={12}
+                rows={8}
                 className="text-base"
               />
-              <div className="flex flex-wrap gap-6">
+              <div className="space-y-3">
+                 <Label className="flex items-center gap-2"><SlidersHorizontal className="text-primary"/> Podcast Presets</Label>
+                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    {PRESETS.map(preset => (
+                        <Button
+                            key={preset.id}
+                            variant={activePreset === preset.id ? "default" : "outline"}
+                            onClick={() => handleSelectPreset(preset.id)}
+                            className="h-auto flex-col items-start p-3 text-left"
+                        >
+                            <div className="font-bold">{preset.name}</div>
+                            <div className="text-xs font-normal text-muted-foreground">{preset.description}</div>
+                        </Button>
+                    ))}
+                 </div>
+              </div>
+              <div className="flex flex-wrap gap-6 border-t pt-4">
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2"><Smile className="text-primary"/> Select Tone</Label>
                   <Select value={tone} onValueChange={setTone}>
@@ -447,3 +480,5 @@ export default function CreatePodcastPage() {
     </div>
   );
 }
+
+    
