@@ -13,13 +13,15 @@ import { synthesizePodcastAudio, SynthesizePodcastAudioInput } from "@/ai/flows/
 import { saveProject, getProject, updateProject, Project } from "@/services/project-service";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { Loader2, Mic, FileText, Download, Play, Wand2, Save, Quote, Info } from "lucide-react";
+import { Loader2, Mic, FileText, Download, Play, Wand2, Save, Quote, Info, Smile } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AI_VOICES } from "@/constants/voices";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 type VoiceConfig = Record<string, { voiceName: string }>;
 type SynthesisMode = "single" | "multiple";
+const TONES = ["Conversational", "Formal", "Humorous", "Dramatic", "Authoritative"];
+
 
 export default function CreatePodcastPage() {
   const { toast } = useToast();
@@ -36,6 +38,7 @@ export default function CreatePodcastPage() {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [synthesisMode, setSynthesisMode] = useState<SynthesisMode>("single");
   const [singleVoiceName, setSingleVoiceName] = useState<string>(AI_VOICES[0].value);
+  const [tone, setTone] = useState<string>(TONES[0]);
 
 
   const [isLoadingScript, setIsLoadingScript] = useState(false);
@@ -111,7 +114,7 @@ export default function CreatePodcastPage() {
     setAudioUrl(null);
     setVoiceConfig({});
     try {
-      const result = await generatePodcastScript({ documentContent });
+      const result = await generatePodcastScript({ documentContent, tone });
       setScript(result.podcastScript);
       setProjectTitle(result.title);
       setSummary(result.summary);
@@ -251,7 +254,7 @@ export default function CreatePodcastPage() {
               <CardTitle className="flex items-center gap-2"><FileText className="text-primary"/> 1. Provide Your Content</CardTitle>
               <CardDescription>Paste your document content below and our AI will generate a podcast script.</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <Textarea
                 placeholder="Paste your article, blog post, or any text here..."
                 value={documentContent}
@@ -259,6 +262,20 @@ export default function CreatePodcastPage() {
                 rows={12}
                 className="text-base"
               />
+               <div className="space-y-2">
+                <Label className="flex items-center gap-2"><Smile className="text-primary"/> Select Tone</Label>
+                <Select value={tone} onValueChange={setTone}>
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Select a tone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TONES.map(t => (
+                      <SelectItem key={t} value={t}>{t}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                 <p className="text-sm text-muted-foreground">The AI will generate the script in the selected tone.</p>
+              </div>
             </CardContent>
             <CardContent>
               <Button onClick={handleGenerateScript} disabled={isLoadingScript || !documentContent}>
@@ -348,7 +365,7 @@ export default function CreatePodcastPage() {
                                 >
                                     <SelectTrigger>
                                         <SelectValue placeholder={`Select voice for ${speaker}`} />
-                                    </SelectTrigger>
+                                    </Tagger>
                                     <SelectContent>
                                         {AI_VOICES.map((voice) => (
                                             <SelectItem key={voice.value} value={voice.value}>

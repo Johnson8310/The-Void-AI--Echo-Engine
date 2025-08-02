@@ -16,6 +16,7 @@ const GeneratePodcastScriptInputSchema = z.object({
   documentContent: z
     .string()
     .describe('The content of the document to convert to a podcast script.'),
+  tone: z.string().optional().describe('The desired tone for the podcast script (e.g., "Conversational", "Formal", "Humorous").'),
 });
 export type GeneratePodcastScriptInput = z.infer<typeof GeneratePodcastScriptInputSchema>;
 
@@ -49,7 +50,12 @@ Your tasks are:
 The script should include:
 - Clear speaker cues (e.g., "Host:", "Expert:"). Use at least two different speakers.
 - Well-defined sections (e.g., intro, main content, outro).
+{{#if tone}}
+- The tone should be {{tone}}.
+{{else}}
 - The tone should be engaging and conversational.
+{{/if}}
+
 
 Here is an example of the desired output format:
 {
