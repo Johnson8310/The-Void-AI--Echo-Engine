@@ -13,11 +13,12 @@ import { SynthesizePodcastAudioInput } from "@/ai/flows/synthesize-podcast-audio
 import { saveProject, getProject, updateProject } from "@/services/project-service";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { Loader2, Mic, FileText, Download, Play, Wand2, Save, Quote, Info, Smile, Plus } from "lucide-react";
+import { Loader2, Mic, FileText, Download, Play, Wand2, Save, Quote, Info, Smile, Plus, Music, Sparkles } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AI_VOICES } from "@/constants/voices";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SceneBuilder } from "@/components/scene-builder";
+import { Switch } from "@/components/ui/switch";
 
 type VoiceConfig = Record<string, { voiceName: string }>;
 type SynthesisMode = "single" | "multiple";
@@ -40,6 +41,7 @@ export default function CreatePodcastPage() {
   const [synthesisMode, setSynthesisMode] = useState<SynthesisMode>("single");
   const [singleVoiceName, setSingleVoiceName] = useState<string>(AI_VOICES[0].value);
   const [tone, setTone] = useState<string>(TONES[0]);
+  const [addMusicAndSfx, setAddMusicAndSfx] = useState(false);
 
 
   const [isLoadingScript, setIsLoadingScript] = useState(false);
@@ -79,7 +81,7 @@ export default function CreatePodcastPage() {
 
   const speakers = useMemo(() => {
     if (!script) return [];
-    const uniqueSpeakers = [...new Set(script.map(line => line.speaker.trim()).filter(Boolean))];
+    const uniqueSpeakers = [...new Set(script.map(line => line.speaker).filter(s => s && !s.startsWith('[')).map(s => s.trim()).filter(Boolean))];
     return uniqueSpeakers;
   }, [script]);
 
@@ -112,7 +114,7 @@ export default function CreatePodcastPage() {
     setAudioUrl(null);
     setVoiceConfig({});
     try {
-      const result: GeneratePodcastScriptOutput = await generatePodcastScript({ documentContent, tone });
+      const result: GeneratePodcastScriptOutput = await generatePodcastScript({ documentContent, tone, addMusicAndSfx });
       setScript(result.script);
       setProjectTitle(result.title);
       setSummary(result.summary);
@@ -195,8 +197,6 @@ export default function CreatePodcastPage() {
         finalVoiceConfig = { '__default': { voiceName: singleVoiceName } };
     }
 
-    const scriptText = script.map(line => `${line.speaker}: ${line.line}`).join('\n');
-
     try {
         if(projectId) {
             const projectDataToUpdate = {
@@ -267,19 +267,29 @@ export default function CreatePodcastPage() {
                 rows={12}
                 className="text-base"
               />
-               <div className="space-y-2">
-                <Label className="flex items-center gap-2"><Smile className="text-primary"/> Select Tone</Label>
-                <Select value={tone} onValueChange={setTone}>
-                  <SelectTrigger className="w-[200px]">
-                    <SelectValue placeholder="Select a tone" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TONES.map(t => (
-                      <SelectItem key={t} value={t}>{t}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                 <p className="text-sm text-muted-foreground">The AI will generate the script in the selected tone.</p>
+              <div className="flex flex-wrap gap-6">
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2"><Smile className="text-primary"/> Select Tone</Label>
+                  <Select value={tone} onValueChange={setTone}>
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue placeholder="Select a tone" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TONES.map(t => (
+                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm text-muted-foreground">The AI will generate the script in the selected tone.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2"><Music className="text-primary"/> Audio Enhancements</Label>
+                   <div className="flex items-center space-x-2">
+                    <Switch id="music-sfx" checked={addMusicAndSfx} onCheckedChange={setAddMusicAndSfx} />
+                    <Label htmlFor="music-sfx">Auto-generate Music & SFX</Label>
+                  </div>
+                  <p className="text-sm text-muted-foreground">The AI will add music and sound effect cues.</p>
+                </div>
               </div>
             </CardContent>
             <CardContent>
