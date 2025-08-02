@@ -3,15 +3,17 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { getProjects, Project } from "@/services/project-service";
+import { getProjects, Project, updateProject } from "@/services/project-service";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Loader2, PlusCircle, Mic, FileText, Edit, Info } from "lucide-react";
+import { Loader2, PlusCircle, Mic, FileText, Edit, Info, Share2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
 
 export default function ProjectsPage() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -30,7 +32,19 @@ export default function ProjectsPage() {
   const getRelativeDate = (project: Project) => {
     const dateToCompare = project.updatedAt || project.createdAt;
     const prefix = project.updatedAt ? 'Updated' : 'Created';
-    return `${prefix} ${formatDistanceToNow(dateToCompare, { addSuffix: true })}`;
+    return `${prefix} ${formatDistanceToNow(new Date(dateToCompare), { addSuffix: true })}`;
+  }
+
+  const handleShare = async (project: Project) => {
+    try {
+        await updateProject(project.id, { isPublic: true });
+        // Optimistically update the UI
+        setProjects(projects.map(p => p.id === project.id ? {...p, isPublic: true} : p));
+        toast({ title: "Project Published!", description: "Your project is now publicly available." });
+    } catch(err) {
+        console.error(err);
+        toast({ title: "Error", description: "Could not publish the project.", variant: "destructive" });
+    }
   }
 
   return (
@@ -98,13 +112,26 @@ export default function ProjectsPage() {
                     </div>
                 )}
               </CardContent>
-              <CardFooter>
+              <CardFooter className="grid grid-cols-2 gap-2">
                  <Button asChild variant="outline" className="w-full">
                     <Link href={`/create?projectId=${project.id}`}>
                         <Edit className="mr-2 h-4 w-4" />
-                        Edit Project
+                        Edit
                     </Link>
                 </Button>
+                 {project.isPublic ? (
+                    <Button asChild className="w-full">
+                        <Link href={`/share/${project.id}`}>
+                            <Share2 className="mr-2 h-4 w-4" />
+                            View
+                        </Link>
+                    </Button>
+                 ) : (
+                    <Button onClick={() => handleShare(project)} className="w-full" disabled={!project.audioUrl}>
+                        <Share2 className="mr-2 h-4 w-4" />
+                        Share
+                    </Button>
+                 )}
               </CardFooter>
             </Card>
           ))}

@@ -14,13 +14,25 @@ import { analyzeScriptForCoaching, AnalyzeScriptOutput } from "@/ai/flows/sound-
 import { saveProject, getProject, updateProject } from "@/services/project-service";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { Loader2, Mic, FileText, Download, Play, Wand2, Save, Quote, Info, Smile, Plus, Music, Sparkles, SlidersHorizontal, BrainCircuit } from "lucide-react";
+import { Loader2, Mic, FileText, Download, Play, Wand2, Save, Quote, Info, Smile, Plus, Music, Sparkles, SlidersHorizontal, BrainCircuit, Share2, Send } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AI_VOICES } from "@/constants/voices";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SceneBuilder } from "@/components/scene-builder";
 import { Switch } from "@/components/ui/switch";
-import { cn } from "@/lib/utils";
+import Link from "next/link";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+
 
 type VoiceConfig = Record<string, { voiceName: string }>;
 type SynthesisMode = "single" | "multiple";
@@ -46,6 +58,7 @@ export default function CreatePodcastPage() {
   const [script, setScript] = useState<ScriptLine[]>([]);
   const [voiceConfig, setVoiceConfig] = useState<VoiceConfig>({});
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [isPublic, setIsPublic] = useState(false);
   const [synthesisMode, setSynthesisMode] = useState<SynthesisMode>("single");
   const [singleVoiceName, setSingleVoiceName] = useState<string>(AI_VOICES[0].value);
   const [tone, setTone] = useState<string>(TONES[0]);
@@ -71,6 +84,7 @@ export default function CreatePodcastPage() {
             setScript(project.script || []);
             setVoiceConfig(project.voiceConfig || {});
             setAudioUrl(project.audioUrl);
+            setIsPublic(project.isPublic || false);
             if (project.voiceConfig && !project.voiceConfig['__default']) {
               setSynthesisMode("multiple");
             } else if (project.voiceConfig && project.voiceConfig['__default']) {
@@ -212,7 +226,7 @@ export default function CreatePodcastPage() {
     }
   };
 
-  const handleSaveProject = async () => {
+  const handleSaveProject = async (makePublic = false) => {
     if (!user) {
         toast({ title: "Authentication Error", description: "You must be logged in to save a project.", variant: "destructive" });
         return;
@@ -228,6 +242,9 @@ export default function CreatePodcastPage() {
         finalVoiceConfig = { '__default': { voiceName: singleVoiceName } };
     }
 
+    const currentIsPublic = makePublic || isPublic;
+    setIsPublic(currentIsPublic);
+
     try {
         if(projectId) {
             const projectDataToUpdate = {
@@ -237,10 +254,13 @@ export default function CreatePodcastPage() {
                 summary,
                 voiceConfig: finalVoiceConfig,
                 audioUrl,
+                isPublic: currentIsPublic,
             };
             await updateProject(projectId, projectDataToUpdate);
             toast({ title: "Project Updated!", description: `"${projectTitle}" has been updated successfully.` });
-            router.push("/projects");
+            if (makePublic) {
+              router.push(`/share/${projectId}`);
+            }
         } else {
             const projectData = {
                 title: projectTitle,
@@ -250,10 +270,15 @@ export default function CreatePodcastPage() {
                 voiceConfig: finalVoiceConfig,
                 audioUrl,
                 userId: user.uid,
+                isPublic: currentIsPublic,
             };
             const newProjectId = await saveProject(projectData);
             toast({ title: "Project Saved!", description: `"${projectTitle}" has been saved successfully.` });
-            router.push(`/create?projectId=${newProjectId}`);
+            if (makePublic) {
+              router.push(`/share/${newProjectId}`);
+            } else {
+              router.push(`/create?projectId=${newProjectId}`);
+            }
         }
     } catch (error) {
         console.error("Failed to save project:", error);
@@ -275,7 +300,6 @@ export default function CreatePodcastPage() {
         setActivePreset(presetId);
     }
   };
-
 
   const isSynthesizeDisabled = isLoadingAudio || script.length === 0;
   const isAnalyzeDisabled = isAnalyzing || script.length === 0;
@@ -507,12 +531,47 @@ export default function CreatePodcastPage() {
                             <Label htmlFor="project-title">Project Title</Label>
                             <Input id="project-title" value={projectTitle} onChange={e => setProjectTitle(e.target.value)} placeholder="Enter project title" />
                         </div>
-                        <Button onClick={handleSaveProject} disabled={isSaving || !projectTitle}>
-                            {isSaving ? <Loader2 className="animate-spin" /> : <Save />}
-                            {projectId ? 'Update Project' : 'Save Project'}
-                        </Button>
+                        <div className="grid grid-cols-2 gap-2">
+                            <Button onClick={() => handleSaveProject(false)} disabled={isSaving || !projectTitle}>
+                                {isSaving ? <Loader2 className="animate-spin" /> : <Save />}
+                                {projectId ? 'Update' : 'Save'}
+                            </Button>
+                            
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button disabled={isSaving || !projectTitle || !audioUrl} variant="default">
+                                  <Send className="mr-2 h-4 w-4" />
+                                  Publish
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Ready to publish your podcast?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Publishing will make your podcast publicly accessible via a shareable link. You can unpublish it later from the project settings.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleSaveProject(true)}>
+                                    Yes, Publish Now
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+
+                        </div>
+
+                         {isPublic && projectId && (
+                              <Button asChild variant="outline">
+                                <Link href={`/share/${projectId}`}>
+                                  <Share2 className="mr-2"/> View Public Page
+                                </Link>
+                              </Button>
+                            )}
+
                         {audioUrl && (
-                          <Button asChild className="w-full" variant="outline">
+                          <Button asChild className="w-full" variant="secondary">
                           <a href={audioUrl} download={`${projectTitle.replace(/\s/g, '_') || 'podcast'}.wav`}>
                               <Download className="mr-2 h-4 w-4" />
                               Download .wav

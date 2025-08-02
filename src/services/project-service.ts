@@ -15,6 +15,7 @@ export interface ProjectData {
   voiceConfig: Record<string, { voiceName: string }>;
   audioUrl: string | null;
   userId: string;
+  isPublic?: boolean;
 }
 
 export interface Project extends Omit<ProjectData, 'userId' | 'voiceConfig'> {
@@ -22,12 +23,14 @@ export interface Project extends Omit<ProjectData, 'userId' | 'voiceConfig'> {
     createdAt: Date;
     updatedAt?: Date;
     voiceConfig: Record<string, { voiceName: string }>;
+    isPublic: boolean;
 }
 
 export async function saveProject(projectData: ProjectData): Promise<string> {
     try {
         const docRef = await addDoc(collection(db, 'projects'), {
             ...projectData,
+            isPublic: projectData.isPublic || false,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
         });
@@ -76,6 +79,7 @@ export async function getProjects(userId: string): Promise<Project[]> {
                 summary: data.summary,
                 voiceConfig: data.voiceConfig,
                 audioUrl: data.audioUrl,
+                isPublic: data.isPublic || false,
                 createdAt: (data.createdAt as Timestamp).toDate(),
                 updatedAt: data.updatedAt ? (data.updatedAt as Timestamp).toDate() : undefined,
             } as Project;
@@ -119,12 +123,41 @@ export async function getProject(id: string, userId: string): Promise<(Project &
             ...projectData,
             script: script || [],
             voiceConfig: projectData.voiceConfig || {},
+            isPublic: projectData.isPublic || false,
             createdAt: (projectData.createdAt as Timestamp).toDate(),
             updatedAt: projectData.updatedAt ? (projectData.updatedAt as Timestamp).toDate() : undefined,
         } as (Project & {userId: string});
 
     } catch (error) {
         console.error("Error fetching project from Firestore: ", error);
+        throw new Error("Could not fetch project.");
+    }
+}
+
+export async function getPublicProject(id: string): Promise<Project | null> {
+    try {
+        const projectRef = doc(db, 'projects', id);
+        const projectSnap = await getDoc(projectRef);
+
+        if (!projectSnap.exists()) {
+            return null;
+        }
+        const projectData = projectSnap.data();
+
+        if (!projectData.isPublic) {
+            console.error('This project is not public.');
+            return null;
+        }
+
+        return {
+            id: projectSnap.id,
+            ...projectData,
+            createdAt: (projectData.createdAt as Timestamp).toDate(),
+            updatedAt: projectData.updatedAt ? (projectData.updatedAt as Timestamp).toDate() : undefined,
+        } as Project;
+
+    } catch (error) {
+        console.error("Error fetching public project from Firestore: ", error);
         throw new Error("Could not fetch project.");
     }
 }
