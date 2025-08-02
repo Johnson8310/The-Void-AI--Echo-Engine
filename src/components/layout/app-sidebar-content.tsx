@@ -11,12 +11,13 @@ import {
   SidebarFooter,
   SidebarContent,
 } from "@/components/ui/sidebar";
-import { Home, PlusCircle, MicVocal, Code, Settings, Bot, Library, Music } from "lucide-react";
+import { Home, PlusCircle, MicVocal, Code, Settings, Bot, Library, Music, Compass } from "lucide-react";
 
 const menuItems = [
   { href: "/", label: "Dashboard", icon: Home },
   { href: "/create", label: "Create Podcast", icon: PlusCircle },
   { href: "/projects", label: "My Projects", icon: Library },
+  { href: "/discover", label: "Discover", icon: Compass },
   { href: "/voice-lab", label: "Voice Lab", icon: MicVocal },
   { href: "/sound-library", label: "Sound Library", icon: Music },
   { href: "/api-access", label: "API Access", icon: Code },
