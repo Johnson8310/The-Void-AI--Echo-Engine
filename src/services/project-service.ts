@@ -3,13 +3,14 @@
 
 import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp, Timestamp, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
+import type { ScriptLine } from '@/ai/flows/generate-podcast-script';
 
 const db = getFirestore(app);
 
 export interface ProjectData {
   title: string;
   originalContent: string;
-  script: string;
+  script: ScriptLine[];
   summary: string;
   voiceConfig: Record<string, { voiceName: string }>;
   audioUrl: string | null;
@@ -35,7 +36,7 @@ export async function saveProject(projectData: ProjectData): Promise<string> {
     }
 }
 
-export async function updateProject(projectId: string, projectData: Omit<ProjectData, 'userId'>): Promise<void> {
+export async function updateProject(projectId: string, projectData: Partial<Omit<ProjectData, 'userId'>>): Promise<void> {
     try {
         const projectRef = doc(db, 'projects', projectId);
         await updateDoc(projectRef, {
@@ -55,11 +56,21 @@ export async function getProjects(userId: string): Promise<Project[]> {
         
         return querySnapshot.docs.map(doc => {
             const data = doc.data();
+            // Handle legacy string scripts
+            const script = typeof data.script === 'string' 
+                ? data.script.split('\n').map((line: string) => {
+                    const parts = line.split(':');
+                    const speaker = parts.shift() || 'Unknown';
+                    const lineText = parts.join(':').trim();
+                    return { speaker, line: lineText };
+                }).filter((s: ScriptLine) => s.line)
+                : data.script;
+
             return {
                 id: doc.id,
                 title: data.title,
                 originalContent: data.originalContent,
-                script: data.script,
+                script: script || [],
                 summary: data.summary,
                 voiceConfig: data.voiceConfig,
                 audioUrl: data.audioUrl,
@@ -88,10 +99,22 @@ export async function getProject(id: string, userId: string): Promise<(Project &
             console.error('User does not have access to this project');
             return null;
         }
+        
+        // Handle legacy string scripts
+        const script = typeof projectData.script === 'string' 
+            ? projectData.script.split('\n').map((line: string) => {
+                const parts = line.split(':');
+                const speaker = parts.shift() || 'Unknown';
+                const lineText = parts.join(':').trim();
+                return { speaker, line: lineText };
+            }).filter((s: ScriptLine) => s.line)
+            : projectData.script;
+
 
         return {
             id: projectSnap.id,
             ...projectData,
+            script: script || [],
             voiceConfig: projectData.voiceConfig || {},
             createdAt: (projectData.createdAt as Timestamp).toDate(),
         } as (Project & {userId: string});

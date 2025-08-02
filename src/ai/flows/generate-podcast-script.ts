@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -24,6 +25,7 @@ const ScriptLineSchema = z.object({
   speaker: z.string().describe("The name of the speaker for this line (e.g., 'Host', 'Expert')."),
   line: z.string().describe("The dialogue for the speaker for this line."),
 });
+export type ScriptLine = z.infer<typeof ScriptLineSchema>;
 
 const GeneratePodcastScriptOutputSchema = z.object({
   title: z.string().describe('A catchy, engaging title for the podcast episode.'),

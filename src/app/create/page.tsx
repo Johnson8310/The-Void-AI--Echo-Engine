@@ -8,15 +8,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { generatePodcastScript, GeneratePodcastScriptOutput } from "@/ai/flows/generate-podcast-script";
-import { synthesizePodcastAudio, SynthesizePodcastAudioInput } from "@/ai/flows/synthesize-podcast-audio";
-import { saveProject, getProject, updateProject, Project } from "@/services/project-service";
+import { generatePodcastScript, GeneratePodcastScriptOutput, ScriptLine } from "@/ai/flows/generate-podcast-script";
+import { SynthesizePodcastAudioInput } from "@/ai/flows/synthesize-podcast-audio";
+import { saveProject, getProject, updateProject } from "@/services/project-service";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { Loader2, Mic, FileText, Download, Play, Wand2, Save, Quote, Info, Smile } from "lucide-react";
+import { Loader2, Mic, FileText, Download, Play, Wand2, Save, Quote, Info, Smile, Plus } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AI_VOICES } from "@/constants/voices";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { SceneBuilder } from "@/components/scene-builder";
 
 type VoiceConfig = Record<string, { voiceName: string }>;
 type SynthesisMode = "single" | "multiple";
@@ -33,7 +34,7 @@ export default function CreatePodcastPage() {
   const [projectTitle, setProjectTitle] = useState("");
   const [documentContent, setDocumentContent] = useState("");
   const [summary, setSummary] = useState("");
-  const [script, setScript] = useState("");
+  const [script, setScript] = useState<ScriptLine[]>([]);
   const [voiceConfig, setVoiceConfig] = useState<VoiceConfig>({});
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [synthesisMode, setSynthesisMode] = useState<SynthesisMode>("single");
@@ -55,7 +56,7 @@ export default function CreatePodcastPage() {
             setProjectTitle(project.title);
             setDocumentContent(project.originalContent);
             setSummary(project.summary || "");
-            setScript(project.script);
+            setScript(project.script || []);
             setVoiceConfig(project.voiceConfig || {});
             setAudioUrl(project.audioUrl);
             if (project.voiceConfig && !project.voiceConfig['__default']) {
@@ -78,10 +79,7 @@ export default function CreatePodcastPage() {
 
   const speakers = useMemo(() => {
     if (!script) return [];
-    const speakerRegex = /(^.+?):/gm;
-    const matches = script.match(speakerRegex);
-    if (!matches) return [];
-    const uniqueSpeakers = [...new Set(matches.map(s => s.slice(0, -1).trim()))];
+    const uniqueSpeakers = [...new Set(script.map(line => line.speaker.trim()).filter(Boolean))];
     return uniqueSpeakers;
   }, [script]);
 
@@ -90,7 +88,7 @@ export default function CreatePodcastPage() {
     if (synthesisMode === 'multiple' && speakers.length > 0) {
       const newConfig = { ...voiceConfig };
       let changed = false;
-      speakers.forEach(speaker => {
+      speakers.forEach((speaker) => {
         if (!newConfig[speaker]) {
           newConfig[speaker] = { voiceName: AI_VOICES[0].value };
           changed = true;
@@ -100,7 +98,7 @@ export default function CreatePodcastPage() {
         setVoiceConfig(newConfig);
       }
     }
-  }, [speakers, synthesisMode]);
+  }, [speakers, synthesisMode, voiceConfig]);
 
 
   const handleGenerateScript = async () => {
@@ -109,13 +107,13 @@ export default function CreatePodcastPage() {
       return;
     }
     setIsLoadingScript(true);
-    setScript("");
+    setScript([]);
     setSummary("");
     setAudioUrl(null);
     setVoiceConfig({});
     try {
       const result: GeneratePodcastScriptOutput = await generatePodcastScript({ documentContent, tone });
-      setScript(result.script.map(line => `${line.speaker}: ${line.line}`).join('\n'));
+      setScript(result.script);
       setProjectTitle(result.title);
       setSummary(result.summary);
     } catch (error) {
@@ -127,7 +125,8 @@ export default function CreatePodcastPage() {
   };
   
   const handleSynthesizeAudio = async () => {
-    if (!script.trim()) {
+    const scriptText = script.map(line => `${line.speaker}: ${line.line}`).join('\n');
+    if (!scriptText.trim()) {
       toast({ title: "Error", description: "Script cannot be empty.", variant: "destructive" });
       return;
     }
@@ -138,7 +137,7 @@ export default function CreatePodcastPage() {
 
     if (synthesisMode === 'single') {
         synthesisInput = {
-            script,
+            script: scriptText,
             voiceConfig: {
                 __default: { voiceName: singleVoiceName }
             }
@@ -151,7 +150,7 @@ export default function CreatePodcastPage() {
             return;
         }
         synthesisInput = {
-            script,
+            script: scriptText,
             voiceConfig,
         };
     }
@@ -196,6 +195,8 @@ export default function CreatePodcastPage() {
         finalVoiceConfig = { '__default': { voiceName: singleVoiceName } };
     }
 
+    const scriptText = script.map(line => `${line.speaker}: ${line.line}`).join('\n');
+
     try {
         if(projectId) {
             const projectDataToUpdate = {
@@ -231,7 +232,11 @@ export default function CreatePodcastPage() {
     }
   };
 
-  const isSynthesizeDisabled = isLoadingAudio || !script;
+  const handleAddScene = () => {
+    setScript(prev => [...prev, { speaker: speakers[0] || "New Speaker", line: "" }]);
+  };
+
+  const isSynthesizeDisabled = isLoadingAudio || script.length === 0;
 
   if (isLoadingProject) {
       return (
@@ -296,19 +301,17 @@ export default function CreatePodcastPage() {
             </Card>
           )}
 
-          {script && (
+          {script.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Mic className="text-primary"/> 2. Edit Your Script</CardTitle>
-                <CardDescription>Refine the generated script below. You can edit text and speakers.</CardDescription>
+                <CardTitle className="flex items-center justify-between">
+                    <div className="flex items-center gap-2"><Mic className="text-primary"/> 2. Edit Your Script</div>
+                    <Button variant="outline" size="sm" onClick={handleAddScene}><Plus className="mr-2"/> Add Scene</Button>
+                </CardTitle>
+                <CardDescription>Refine the generated script below. You can edit text, change speakers, and drag to reorder scenes.</CardDescription>
               </CardHeader>
               <CardContent>
-                <Textarea
-                  value={script}
-                  onChange={(e) => setScript(e.target.value)}
-                  rows={25}
-                  className="text-base font-mono leading-relaxed"
-                />
+                <SceneBuilder scenes={script} setScenes={setScript} speakers={speakers} />
               </CardContent>
             </Card>
           )}
@@ -389,7 +392,7 @@ export default function CreatePodcastPage() {
             </CardContent>
           </Card>
 
-          {(isLoadingAudio || audioUrl || script) && (
+          {(isLoadingAudio || audioUrl || script.length > 0) && (
             <Card>
               <CardHeader>
                 <CardTitle>4. Preview &amp; Export</CardTitle>
@@ -406,7 +409,7 @@ export default function CreatePodcastPage() {
                     <audio controls src={audioUrl} className="w-full">Your browser does not support the audio element.</audio>
                   </>
                 )}
-                {script && (
+                {script.length > 0 && (
                     <div className="w-full flex flex-col gap-2">
                         <div className="space-y-2">
                             <Label htmlFor="project-title">Project Title</Label>
