@@ -10,6 +10,7 @@ export interface ProjectData {
   title: string;
   originalContent: string;
   script: string;
+  summary: string;
   voiceConfig: Record<string, { voiceName: string }>;
   audioUrl: string | null;
   userId: string;
@@ -59,6 +60,7 @@ export async function getProjects(userId: string): Promise<Project[]> {
                 title: data.title,
                 originalContent: data.originalContent,
                 script: data.script,
+                summary: data.summary,
                 voiceConfig: data.voiceConfig,
                 audioUrl: data.audioUrl,
                 createdAt: (data.createdAt as Timestamp).toDate(),

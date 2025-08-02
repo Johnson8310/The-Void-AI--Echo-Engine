@@ -7,7 +7,7 @@ import { getProjects, Project } from "@/services/project-service";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Loader2, PlusCircle, Mic, FileText, Edit } from "lucide-react";
+import { Loader2, PlusCircle, Mic, FileText, Edit, Info } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 export default function ProjectsPage() {
@@ -75,9 +75,15 @@ export default function ProjectsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex-1 space-y-2">
+                {project.summary && (
+                  <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                      <Info className="h-4 w-4 mt-1 shrink-0" /> 
+                      <p className="flex-1">{project.summary}</p>
+                  </div>
+                )}
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <FileText className="h-4 w-4" /> 
-                    <span>{project.originalContent.substring(0, 50)}...</span>
+                    <span>{project.originalContent ? `${project.originalContent.substring(0, 50)}...` : 'No original content.'}</span>
                 </div>
                 {project.audioUrl && (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">

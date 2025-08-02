@@ -20,6 +20,8 @@ const GeneratePodcastScriptInputSchema = z.object({
 export type GeneratePodcastScriptInput = z.infer<typeof GeneratePodcastScriptInputSchema>;
 
 const GeneratePodcastScriptOutputSchema = z.object({
+  title: z.string().describe('A catchy, engaging title for the podcast episode.'),
+  summary: z.string().describe('A brief, one or two-sentence summary of the podcast episode.'),
   podcastScript: z
     .string()
     .describe('The generated podcast script with speaker cues and sections.'),
@@ -35,26 +37,33 @@ const prompt = ai.definePrompt({
   model: gemini15Flash,
   input: {schema: GeneratePodcastScriptInputSchema},
   output: {schema: GeneratePodcastScriptOutputSchema},
-  prompt: `You are a podcast script writer. Your task is to convert the provided document content into a well-structured podcast script.
+  prompt: `You are a podcast producer and script writer. Your task is to take the provided document and turn it into a full podcast episode.
 
-The entire output must be a single JSON object with a single key, "podcastScript". The value of this key should be a string containing the entire script.
+The entire output must be a single JSON object.
+
+Your tasks are:
+1.  Create a catchy, engaging title for the podcast episode.
+2.  Write a brief, one or two-sentence summary of the episode.
+3.  Convert the document content into a well-structured podcast script.
 
 The script should include:
-1.  Clear speaker cues (e.g., "Host:", "Expert:", "Narrator:").
-2.  Well-defined sections (e.g., intro, main content, outro).
-3.  The tone should be engaging and conversational.
+- Clear speaker cues (e.g., "Host:", "Expert:"). Use at least two different speakers.
+- Well-defined sections (e.g., intro, main content, outro).
+- The tone should be engaging and conversational.
 
 Here is an example of the desired output format:
 {
+  "title": "The Future of Artificial Intelligence",
+  "summary": "In this episode, we explore the exciting and unpredictable future of AI with our expert guest.",
   "podcastScript": "Host: Welcome to our show! Today we are discussing the future of AI.\\nExpert: It's a pleasure to be here. The future is both exciting and unpredictable."
 }
 
-Now, please process the following document content and generate the podcast script in the specified JSON format.
+Now, please process the following document content and generate the podcast title, summary, and script in the specified JSON format.
 
 Document Content:
 {{{documentContent}}}
 
-Remember to format your entire response as a single JSON object with the "podcastScript" key. Do not include any text or formatting outside of the JSON object.`,
+Remember to format your entire response as a single JSON object. Do not include any text or formatting outside of the JSON object.`,
 });
 
 const generatePodcastScriptFlow = ai.defineFlow(

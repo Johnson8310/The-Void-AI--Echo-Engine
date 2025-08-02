@@ -13,7 +13,7 @@ import { synthesizePodcastAudio, SynthesizePodcastAudioInput } from "@/ai/flows/
 import { saveProject, getProject, updateProject, Project } from "@/services/project-service";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { Loader2, Mic, FileText, Download, Play, Wand2, Save } from "lucide-react";
+import { Loader2, Mic, FileText, Download, Play, Wand2, Save, Quote, Info } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AI_VOICES } from "@/constants/voices";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -30,6 +30,7 @@ export default function CreatePodcastPage() {
 
   const [projectTitle, setProjectTitle] = useState("");
   const [documentContent, setDocumentContent] = useState("");
+  const [summary, setSummary] = useState("");
   const [script, setScript] = useState("");
   const [voiceConfig, setVoiceConfig] = useState<VoiceConfig>({});
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -50,6 +51,7 @@ export default function CreatePodcastPage() {
           if (project) {
             setProjectTitle(project.title);
             setDocumentContent(project.originalContent);
+            setSummary(project.summary || "");
             setScript(project.script);
             setVoiceConfig(project.voiceConfig || {});
             setAudioUrl(project.audioUrl);
@@ -105,14 +107,14 @@ export default function CreatePodcastPage() {
     }
     setIsLoadingScript(true);
     setScript("");
+    setSummary("");
     setAudioUrl(null);
     setVoiceConfig({});
     try {
       const result = await generatePodcastScript({ documentContent });
       setScript(result.podcastScript);
-      if (!projectTitle) {
-        setProjectTitle("New Podcast Project");
-      }
+      setProjectTitle(result.title);
+      setSummary(result.summary);
     } catch (error) {
       console.error(error);
       toast({ title: "Script Generation Failed", description: "An error occurred while generating the script.", variant: "destructive" });
@@ -152,8 +154,20 @@ export default function CreatePodcastPage() {
     }
 
     try {
-      const result = await synthesizePodcastAudio(synthesisInput);
-      setAudioUrl(result.podcastAudioUri);
+      const response = await fetch('/api/v1/synthesize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(synthesisInput),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      setAudioUrl(result.audioUrl);
+
       toast({ title: "Success!", description: "Your podcast audio has been generated." });
     } catch (error: any) {
       console.error(error);
@@ -185,6 +199,7 @@ export default function CreatePodcastPage() {
                 title: projectTitle,
                 originalContent: documentContent,
                 script,
+                summary,
                 voiceConfig: finalVoiceConfig,
                 audioUrl,
             };
@@ -196,6 +211,7 @@ export default function CreatePodcastPage() {
                 title: projectTitle,
                 originalContent: documentContent,
                 script,
+                summary,
                 voiceConfig: finalVoiceConfig,
                 audioUrl,
                 userId: user.uid,
@@ -247,10 +263,21 @@ export default function CreatePodcastPage() {
             <CardContent>
               <Button onClick={handleGenerateScript} disabled={isLoadingScript || !documentContent}>
                 {isLoadingScript ? <Loader2 className="animate-spin" /> : <Wand2 />}
-                Generate Script
+                Generate Script & Title
               </Button>
             </CardContent>
           </Card>
+          
+          {summary && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Info className="text-primary"/> AI-Generated Summary</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">{summary}</p>
+              </CardContent>
+            </Card>
+          )}
 
           {script && (
             <Card>
