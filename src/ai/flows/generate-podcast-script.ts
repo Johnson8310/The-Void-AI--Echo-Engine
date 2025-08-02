@@ -20,12 +20,15 @@ const GeneratePodcastScriptInputSchema = z.object({
 });
 export type GeneratePodcastScriptInput = z.infer<typeof GeneratePodcastScriptInputSchema>;
 
+const ScriptLineSchema = z.object({
+  speaker: z.string().describe("The name of the speaker for this line (e.g., 'Host', 'Expert')."),
+  line: z.string().describe("The dialogue for the speaker for this line."),
+});
+
 const GeneratePodcastScriptOutputSchema = z.object({
   title: z.string().describe('A catchy, engaging title for the podcast episode.'),
   summary: z.string().describe('A brief, one or two-sentence summary of the podcast episode.'),
-  podcastScript: z
-    .string()
-    .describe('The generated podcast script with speaker cues and sections.'),
+  script: z.array(ScriptLineSchema).describe("The generated podcast script as an array of speaker and line objects."),
 });
 export type GeneratePodcastScriptOutput = z.infer<typeof GeneratePodcastScriptOutputSchema>;
 
@@ -45,10 +48,10 @@ The entire output must be a single JSON object.
 Your tasks are:
 1.  Create a catchy, engaging title for the podcast episode.
 2.  Write a brief, one or two-sentence summary of the episode.
-3.  Convert the document content into a well-structured podcast script.
+3.  Convert the document content into a well-structured podcast script, returned as an array of objects, where each object has a "speaker" and a "line".
 
 The script should include:
-- Clear speaker cues (e.g., "Host:", "Expert:"). Use at least two different speakers.
+- Clear speaker cues (e.g., "Host", "Expert"). Use at least two different speakers.
 - Well-defined sections (e.g., intro, main content, outro).
 {{#if tone}}
 - The tone should be {{tone}}.
@@ -61,7 +64,10 @@ Here is an example of the desired output format:
 {
   "title": "The Future of Artificial Intelligence",
   "summary": "In this episode, we explore the exciting and unpredictable future of AI with our expert guest.",
-  "podcastScript": "Host: Welcome to our show! Today we are discussing the future of AI.\\nExpert: It's a pleasure to be here. The future is both exciting and unpredictable."
+  "script": [
+    { "speaker": "Host", "line": "Welcome to our show! Today we are discussing the future of AI." },
+    { "speaker": "Expert", "line": "It's a pleasure to be here. The future is both exciting and unpredictable." }
+  ]
 }
 
 Now, please process the following document content and generate the podcast title, summary, and script in the specified JSON format.
