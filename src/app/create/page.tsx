@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { generatePodcastScript } from "@/ai/flows/generate-podcast-script";
+import { generatePodcastScript, GeneratePodcastScriptOutput } from "@/ai/flows/generate-podcast-script";
 import { synthesizePodcastAudio, SynthesizePodcastAudioInput } from "@/ai/flows/synthesize-podcast-audio";
 import { saveProject, getProject, updateProject, Project } from "@/services/project-service";
 import { useToast } from "@/hooks/use-toast";
@@ -114,8 +114,8 @@ export default function CreatePodcastPage() {
     setAudioUrl(null);
     setVoiceConfig({});
     try {
-      const result = await generatePodcastScript({ documentContent, tone });
-      setScript(result.podcastScript);
+      const result: GeneratePodcastScriptOutput = await generatePodcastScript({ documentContent, tone });
+      setScript(result.script.map(line => `${line.speaker}: ${line.line}`).join('\n'));
       setProjectTitle(result.title);
       setSummary(result.summary);
     } catch (error) {
@@ -229,7 +229,7 @@ export default function CreatePodcastPage() {
     } finally {
         setIsSaving(false);
     }
-  }
+  };
 
   const isSynthesizeDisabled = isLoadingAudio || !script;
 
@@ -365,7 +365,7 @@ export default function CreatePodcastPage() {
                                 >
                                     <SelectTrigger>
                                         <SelectValue placeholder={`Select voice for ${speaker}`} />
-                                    </Tagger>
+                                    </SelectTrigger>
                                     <SelectContent>
                                         {AI_VOICES.map((voice) => (
                                             <SelectItem key={voice.value} value={voice.value}>
