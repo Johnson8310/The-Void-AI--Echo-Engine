@@ -56,7 +56,7 @@ export default function ProjectsPage() {
         <Card className="mt-8 text-center border-dashed flex flex-col items-center justify-center py-12">
             <CardHeader>
                 <CardTitle>No Projects Yet</CardTitle>
-                <CardDescription>You haven&apos;t saved any podcasts. Let&apos;s create one!</CardDescription>
+                <CardDescription>You haven't saved any podcasts. Let's create one!</CardDescription>
             </CardHeader>
             <CardContent>
                 <Button asChild>
