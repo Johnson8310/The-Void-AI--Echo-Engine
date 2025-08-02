@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
-import { PlusCircle, BrainCircuit, Library } from "lucide-react";
+import { PlusCircle, MicVocal, Library } from "lucide-react";
 
 export default function DashboardPage() {
   return (
@@ -41,16 +41,18 @@ export default function DashboardPage() {
             </Link>
           </CardContent>
         </Card>
-         <Card className="border-dashed">
+         <Card className="flex flex-col">
           <CardHeader>
             <CardTitle className="flex items-center gap-3">
-              <BrainCircuit className="h-8 w-8 text-muted-foreground" />
-              Voice Library
+              <MicVocal className="h-8 w-8 text-primary" />
+              Voice Lab
             </CardTitle>
             <CardDescription>Explore and manage your custom AI voices.</CardDescription>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">Coming soon.</p>
+          <CardContent className="flex-1 flex items-end">
+            <Link href="/voice-lab" passHref className="w-full">
+                <Button variant="outline" className="w-full">Open Voice Lab</Button>
+            </Link>
           </CardContent>
         </Card>
       </div>
