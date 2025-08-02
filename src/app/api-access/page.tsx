@@ -34,17 +34,17 @@ export default function ApiAccessPage() {
       <div>
         <h1 className="text-4xl font-headline tracking-tight">API Access</h1>
         <p className="text-muted-foreground mt-2">
-          Integrate The Void AI's power into your own applications.
+          Integrate The Void AI's synthesis engine into your own applications and workflows.
         </p>
       </div>
       <Card className="mt-4">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Code className="text-primary" />
-            Text-to-Speech API (Google AI)
+            Text-to-Speech API
           </CardTitle>
           <CardDescription>
-            Unlock programmatic access to our multi-voice synthesis engine.
+            Unlock programmatic access to our powerful multi-voice synthesis engine.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">

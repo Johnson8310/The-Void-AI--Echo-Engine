@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
-import { PlusCircle, MicVocal, Library } from "lucide-react";
+import { PlusCircle, MicVocal, Library, Code } from "lucide-react";
 
 export default function DashboardPage() {
   return (
@@ -10,8 +10,8 @@ export default function DashboardPage() {
         <h1 className="text-4xl font-headline tracking-tight text-primary">Echo Engine</h1>
         <p className="text-muted-foreground mt-2">Welcome to The Void AI. Transform your documents into engaging podcasts.</p>
       </div>
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <Card className="flex flex-col border-primary/50 shadow-lg shadow-primary/10">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
+        <Card className="flex flex-col border-primary/50 shadow-lg shadow-primary/10 xl:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-3">
               <PlusCircle className="h-8 w-8 text-primary" />
@@ -44,14 +44,14 @@ export default function DashboardPage() {
          <Card className="flex flex-col">
           <CardHeader>
             <CardTitle className="flex items-center gap-3">
-              <MicVocal className="h-8 w-8 text-primary" />
-              Voice Lab
+              <Code className="h-8 w-8 text-primary" />
+              DEV & Pro Tools
             </CardTitle>
-            <CardDescription>Explore and manage your custom AI voices.</CardDescription>
+            <CardDescription>Integrate with our API and manage your settings.</CardDescription>
           </CardHeader>
           <CardContent className="flex-1 flex items-end">
-            <Link href="/voice-lab" passHref className="w-full">
-                <Button variant="outline" className="w-full">Open Voice Lab</Button>
+            <Link href="/api-access" passHref className="w-full">
+                <Button variant="outline" className="w-full">Access API</Button>
             </Link>
           </CardContent>
         </Card>
