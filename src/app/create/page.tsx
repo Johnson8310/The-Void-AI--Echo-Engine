@@ -199,6 +199,7 @@ export default function CreatePodcastPage() {
       return;
     }
     setIsAnalyzing(true);
+    setCoachingNotes([]);
     try {
         const result = await analyzeScriptForCoaching({ script: scriptText });
         setCoachingNotes(result.coachingNotes);
@@ -277,6 +278,7 @@ export default function CreatePodcastPage() {
 
 
   const isSynthesizeDisabled = isLoadingAudio || script.length === 0;
+  const isAnalyzeDisabled = isAnalyzing || script.length === 0;
 
   if (isLoadingProject) {
       return (
@@ -389,7 +391,7 @@ export default function CreatePodcastPage() {
                     <CardDescription>Get feedback from our AI on how to improve your podcast's delivery and production.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Button onClick={handleAnalyzeScript} disabled={isAnalyzing}>
+                    <Button onClick={handleAnalyzeScript} disabled={isAnalyzeDisabled}>
                         {isAnalyzing ? <Loader2 className="animate-spin"/> : <Sparkles />}
                         Analyze Script
                     </Button>
