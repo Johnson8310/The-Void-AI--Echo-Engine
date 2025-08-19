@@ -1,7 +1,7 @@
 
 'use server';
 
-import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp, Timestamp, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp, Timestamp, doc, getDoc, updateDoc, orderBy } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
 import type { ScriptLine } from '@/ai/flows/generate-podcast-script';
 
@@ -59,7 +59,7 @@ export async function getProjects(userId: string): Promise<Project[]> {
         const q = query(collection(db, 'projects'), where('userId', '==', userId));
         const querySnapshot = await getDocs(q);
         
-        return querySnapshot.docs.map(doc => {
+        const projects = querySnapshot.docs.map(doc => {
             const data = doc.data();
             // Handle legacy string scripts
             const script = typeof data.script === 'string' 
@@ -83,7 +83,10 @@ export async function getProjects(userId: string): Promise<Project[]> {
                 createdAt: (data.createdAt as Timestamp).toDate(),
                 updatedAt: data.updatedAt ? (data.updatedAt as Timestamp).toDate() : undefined,
             } as Project;
-        }).sort((a, b) => (b.updatedAt || b.createdAt).getTime() - (a.updatedAt || a.createdAt).getTime());
+        });
+        
+        // Sort projects by date in the application code
+        return projects.sort((a, b) => (b.updatedAt || b.createdAt).getTime() - (a.updatedAt || a.createdAt).getTime());
 
     } catch (error) {
         console.error("Error fetching projects from Firestore: ", error);
