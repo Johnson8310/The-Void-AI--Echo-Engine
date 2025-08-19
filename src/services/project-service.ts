@@ -137,6 +137,29 @@ export async function getProject(id: string, userId: string): Promise<(Project &
     }
 }
 
+
+export async function getPublicProjects(): Promise<Project[]> {
+    try {
+        const q = query(collection(db, 'projects'), where('isPublic', '==', true), orderBy('updatedAt', 'desc'));
+        const querySnapshot = await getDocs(q);
+
+        return querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                createdAt: (data.createdAt as Timestamp).toDate(),
+                updatedAt: data.updatedAt ? (data.updatedAt as Timestamp).toDate() : undefined,
+            } as Project;
+        });
+    } catch (error) {
+        console.error("Error fetching public projects from Firestore: ", error);
+        // It's better to return an empty array for a public feed than to throw an error
+        return [];
+    }
+}
+
+
 export async function getPublicProject(id: string): Promise<Project | null> {
     try {
         const projectRef = doc(db, 'projects', id);
@@ -156,7 +179,7 @@ export async function getPublicProject(id: string): Promise<Project | null> {
             id: projectSnap.id,
             ...projectData,
             createdAt: (projectData.createdAt as Timestamp).toDate(),
-            updatedAt: projectData.updatedAt ? (projectData.updatedAt as Timestamp).toDate() : undefined,
+            updatedAt: projectData.updatedAt ? (data.updatedAt as Timestamp).toDate() : undefined,
         } as Project;
 
     } catch (error) {
@@ -164,3 +187,4 @@ export async function getPublicProject(id: string): Promise<Project | null> {
         throw new Error("Could not fetch project.");
     }
 }
+
