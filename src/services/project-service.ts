@@ -30,6 +30,7 @@ export async function saveProject(projectData: ProjectData): Promise<string> {
     try {
         const dataToSave = {
             ...projectData,
+            script: JSON.stringify(projectData.script || []), // Serialize script to JSON string
             summary: projectData.summary || '',
             audioUrl: projectData.audioUrl || null,
             isPublic: projectData.isPublic || false,
@@ -46,11 +47,14 @@ export async function saveProject(projectData: ProjectData): Promise<string> {
 
 export async function updateProject(projectId: string, projectData: Partial<Omit<ProjectData, 'userId'>>): Promise<void> {
     try {
+        const dataToUpdate: Record<string, any> = { ...projectData };
+        if (projectData.script) {
+            dataToUpdate.script = JSON.stringify(projectData.script); // Serialize script to JSON string
+        }
+        dataToUpdate.updatedAt = serverTimestamp();
+
         const projectRef = doc(db, 'projects', projectId);
-        await updateDoc(projectRef, {
-            ...projectData,
-            updatedAt: serverTimestamp(),
-        });
+        await updateDoc(projectRef, dataToUpdate);
     } catch (error) {
         console.error("Error updating project in Firestore: ", error);
         throw new Error("Could not update project.");
@@ -59,20 +63,18 @@ export async function updateProject(projectId: string, projectData: Partial<Omit
 
 const parseScript = (script: any): ScriptLine[] => {
     if (!script) return [];
+    // The script is now stored as a JSON string, so we need to parse it.
     if (typeof script === 'string') {
         try {
-            if (!script.trim()) return [];
-            return script.split('\n').map((line: string) => {
-                const parts = line.split(':');
-                const speaker = parts.shift() || 'Unknown';
-                const lineText = parts.join(':').trim();
-                return { speaker, line: lineText };
-            }).filter((s: ScriptLine) => s.line);
+            const parsed = JSON.parse(script);
+            // Ensure it's an array before returning
+            return Array.isArray(parsed) ? parsed : [];
         } catch (e) {
-            console.error("Error parsing string script:", e);
-            return [];
+            console.error("Error parsing JSON script:", e);
+            return []; // Return empty array if JSON is invalid
         }
     }
+    // For backward compatibility with any old data that might still be an array
     if (Array.isArray(script)) {
         return script;
     }
