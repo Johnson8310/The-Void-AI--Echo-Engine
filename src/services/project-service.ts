@@ -28,12 +28,15 @@ export interface Project extends Omit<ProjectData, 'userId' | 'voiceConfig'> {
 
 export async function saveProject(projectData: ProjectData): Promise<string> {
     try {
-        const docRef = await addDoc(collection(db, 'projects'), {
+        const dataToSave = {
             ...projectData,
+            summary: projectData.summary || '',
+            audioUrl: projectData.audioUrl || null,
             isPublic: projectData.isPublic || false,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
-        });
+        };
+        const docRef = await addDoc(collection(db, 'projects'), dataToSave);
         return docRef.id;
     } catch (error) {
         console.error("Error saving project to Firestore: ", error);
@@ -58,6 +61,7 @@ const parseScript = (script: any): ScriptLine[] => {
     if (!script) return [];
     if (typeof script === 'string') {
         try {
+            if (!script.trim()) return [];
             return script.split('\n').map((line: string) => {
                 const parts = line.split(':');
                 const speaker = parts.shift() || 'Unknown';
