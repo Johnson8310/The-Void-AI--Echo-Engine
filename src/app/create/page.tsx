@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { generatePodcastScript, GeneratePodcastScriptOutput, ScriptLine } from "@/ai/flows/generate-podcast-script";
 import { SynthesizePodcastAudioInput } from "@/ai/flows/synthesize-podcast-audio";
 import { analyzeScriptForCoaching, AnalyzeScriptOutput } from "@/ai/flows/sound-coach";
-import { saveProject, getProject, updateProject } from "@/services/project-service";
+import { saveProject, getProject, updateProject, ProjectData } from "@/services/project-service";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2, Mic, FileText, Download, Play, Wand2, Save, Quote, Info, Smile, Plus, Music, Sparkles, SlidersHorizontal, BrainCircuit, Share2, Send } from "lucide-react";
@@ -88,6 +88,7 @@ export default function CreatePodcastPage() {
             if (project.voiceConfig && !project.voiceConfig['__default']) {
               setSynthesisMode("multiple");
             } else if (project.voiceConfig && project.voiceConfig['__default']) {
+              setSynthesisMode("single");
               setSingleVoiceName(project.voiceConfig['__default'].voiceName)
             }
           } else {
@@ -110,9 +111,8 @@ export default function CreatePodcastPage() {
   }, [script]);
 
   useEffect(() => {
-    // Initialize voice config when speakers are identified
     if (synthesisMode === 'multiple' && speakers.length > 0) {
-      const newConfig = { ...voiceConfig };
+      const newConfig: VoiceConfig = { ...voiceConfig };
       let changed = false;
       speakers.forEach((speaker) => {
         if (!newConfig[speaker]) {
@@ -120,6 +120,14 @@ export default function CreatePodcastPage() {
           changed = true;
         }
       });
+      // Clean up old speakers from voiceConfig
+      Object.keys(newConfig).forEach(key => {
+        if (key !== '__default' && !speakers.includes(key)) {
+          delete newConfig[key];
+          changed = true;
+        }
+      });
+
       if (changed) {
         setVoiceConfig(newConfig);
       }
@@ -143,6 +151,15 @@ export default function CreatePodcastPage() {
       setScript(result.script);
       setProjectTitle(result.title);
       setSummary(result.summary);
+      if (synthesisMode === 'single') {
+        setVoiceConfig({'__default': {voiceName: singleVoiceName}});
+      } else {
+        const initialVoiceConfig = speakers.reduce((acc, speaker) => {
+            acc[speaker] = { voiceName: AI_VOICES[0].value };
+            return acc;
+        }, {} as VoiceConfig);
+        setVoiceConfig(initialVoiceConfig);
+      }
     } catch (error) {
       console.error(error);
       toast({ title: "Script Generation Failed", description: "An error occurred while generating the script.", variant: "destructive" });
@@ -160,27 +177,23 @@ export default function CreatePodcastPage() {
     setIsLoadingAudio(true);
     setAudioUrl(null);
 
-    let synthesisInput: SynthesizePodcastAudioInput;
-
+    let finalVoiceConfig = voiceConfig;
     if (synthesisMode === 'single') {
-        synthesisInput = {
-            script: scriptText,
-            voiceConfig: {
-                __default: { voiceName: singleVoiceName }
-            }
-        };
+      finalVoiceConfig = { '__default': { voiceName: singleVoiceName } };
     } else {
-        const missingVoices = speakers.filter(speaker => !voiceConfig[speaker]?.voiceName);
-        if (missingVoices.length > 0) {
-            toast({ title: "Voice configuration missing", description: `Please select a voice for all speakers: ${missingVoices.join(', ')}`, variant: "destructive" });
-            setIsLoadingAudio(false);
-            return;
-        }
-        synthesisInput = {
-            script: scriptText,
-            voiceConfig,
-        };
+      const missingVoices = speakers.filter(speaker => !finalVoiceConfig[speaker]?.voiceName);
+      if (missingVoices.length > 0) {
+          toast({ title: "Voice configuration missing", description: `Please select a voice for all speakers: ${missingVoices.join(', ')}`, variant: "destructive" });
+          setIsLoadingAudio(false);
+          return;
+      }
     }
+
+    const synthesisInput: SynthesizePodcastAudioInput = {
+      script: scriptText,
+      voiceConfig: finalVoiceConfig
+    };
+
 
     try {
       const response = await fetch('/api/v1/synthesize', {
@@ -196,6 +209,7 @@ export default function CreatePodcastPage() {
 
       const result = await response.json();
       setAudioUrl(result.audioUrl);
+      setVoiceConfig(finalVoiceConfig); // Persist the voice config used for synthesis
 
       toast({ title: "Success!", description: "Your podcast audio has been generated." });
     } catch (error: any) {
@@ -241,13 +255,15 @@ export default function CreatePodcastPage() {
     if (synthesisMode === 'single') {
         finalVoiceConfig = { '__default': { voiceName: singleVoiceName } };
     }
+    // Update state to have the latest voice config before saving
+    setVoiceConfig(finalVoiceConfig);
 
     const currentIsPublic = makePublic || isPublic;
     setIsPublic(currentIsPublic);
 
     try {
         if(projectId) {
-            const projectDataToUpdate = {
+            const projectDataToUpdate: Partial<ProjectData> = {
                 title: projectTitle,
                 originalContent: documentContent,
                 script,
@@ -262,7 +278,7 @@ export default function CreatePodcastPage() {
               router.push(`/share/${projectId}`);
             }
         } else {
-            const projectData = {
+            const projectData: ProjectData = {
                 title: projectTitle,
                 originalContent: documentContent,
                 script,

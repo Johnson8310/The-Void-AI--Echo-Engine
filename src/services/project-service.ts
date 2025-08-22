@@ -26,6 +26,27 @@ export interface Project extends Omit<ProjectData, 'userId' | 'voiceConfig'> {
     isPublic: boolean;
 }
 
+const parseScript = (script: any): ScriptLine[] => {
+    if (!script) return [];
+    if (Array.isArray(script)) {
+        return script; // Already in correct format
+    }
+    if (typeof script === 'string') {
+        try {
+            const parsed = JSON.parse(script);
+            // Ensure it's an array of objects with the correct shape
+            if (Array.isArray(parsed) && parsed.every(item => typeof item === 'object' && 'speaker' in item && 'line' in item)) {
+                return parsed;
+            }
+        } catch (e) {
+            console.error("Error parsing JSON script:", e);
+            return [];
+        }
+    }
+    return [];
+};
+
+
 export async function saveProject(projectData: ProjectData): Promise<string> {
     try {
         const dataToSave = {
@@ -61,23 +82,6 @@ export async function updateProject(projectId: string, projectData: Partial<Omit
     }
 }
 
-const parseScript = (script: any): ScriptLine[] => {
-    if (!script) return [];
-    if (typeof script === 'string') {
-        try {
-            const parsed = JSON.parse(script);
-            return Array.isArray(parsed) ? parsed : [];
-        } catch (e) {
-            console.error("Error parsing JSON script:", e);
-            return [];
-        }
-    }
-    if (Array.isArray(script)) {
-        return script;
-    }
-    return [];
-};
-
 
 export async function getProjects(userId: string): Promise<Project[]> {
     try {
@@ -101,6 +105,7 @@ export async function getProjects(userId: string): Promise<Project[]> {
             } as Project;
         });
         
+        // Sort in the application code
         return projects.sort((a, b) => (b.updatedAt || b.createdAt).getTime() - (a.updatedAt || a.createdAt).getTime());
 
     } catch (error) {
@@ -144,10 +149,10 @@ export async function getProject(id: string, userId: string): Promise<(Project &
 
 export async function getPublicProjects(): Promise<Project[]> {
     try {
-        const q = query(collection(db, 'projects'), where('isPublic', '==', true), orderBy('updatedAt', 'desc'));
+        const q = query(collection(db, 'projects'), where('isPublic', '==', true));
         const querySnapshot = await getDocs(q);
 
-        return querySnapshot.docs.map(doc => {
+        const projects = querySnapshot.docs.map(doc => {
             const data = doc.data();
             return {
                 id: doc.id,
@@ -157,6 +162,9 @@ export async function getPublicProjects(): Promise<Project[]> {
                 updatedAt: data.updatedAt ? (data.updatedAt as Timestamp).toDate() : undefined,
             } as Project;
         });
+        
+        return projects.sort((a, b) => (b.updatedAt || b.createdAt).getTime() - (a.updatedAt || a.createdAt).getTime());
+
     } catch (error) {
         console.error("Error fetching public projects from Firestore: ", error);
         return [];
@@ -183,8 +191,8 @@ export async function getPublicProject(id: string): Promise<Project | null> {
             id: projectSnap.id,
             ...projectData,
             script: parseScript(projectData.script),
-            createdAt: (data.createdAt as Timestamp).toDate(),
-            updatedAt: data.updatedAt ? (data.updatedAt as Timestamp).toDate() : undefined,
+            createdAt: (projectData.createdAt as Timestamp).toDate(),
+            updatedAt: projectData.updatedAt ? (projectData.updatedAt as Timestamp).toDate() : undefined,
         } as Project;
 
     } catch (error) {
