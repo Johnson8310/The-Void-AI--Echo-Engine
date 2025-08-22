@@ -63,18 +63,15 @@ export async function updateProject(projectId: string, projectData: Partial<Omit
 
 const parseScript = (script: any): ScriptLine[] => {
     if (!script) return [];
-    // The script is now stored as a JSON string, so we need to parse it.
     if (typeof script === 'string') {
         try {
             const parsed = JSON.parse(script);
-            // Ensure it's an array before returning
             return Array.isArray(parsed) ? parsed : [];
         } catch (e) {
             console.error("Error parsing JSON script:", e);
-            return []; // Return empty array if JSON is invalid
+            return [];
         }
     }
-    // For backward compatibility with any old data that might still be an array
     if (Array.isArray(script)) {
         return script;
     }
@@ -186,8 +183,8 @@ export async function getPublicProject(id: string): Promise<Project | null> {
             id: projectSnap.id,
             ...projectData,
             script: parseScript(projectData.script),
-            createdAt: (projectData.createdAt as Timestamp).toDate(),
-            updatedAt: projectData.updatedAt ? (projectData.updatedAt as Timestamp).toDate() : undefined,
+            createdAt: (data.createdAt as Timestamp).toDate(),
+            updatedAt: data.updatedAt ? (data.updatedAt as Timestamp).toDate() : undefined,
         } as Project;
 
     } catch (error) {
