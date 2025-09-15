@@ -17,7 +17,6 @@ import { useAuth } from "@/hooks/use-auth";
 import { Loader2, Mic, FileText, Download, Play, Wand2, Save, Quote, Info, Smile, Plus, Music, Sparkles, SlidersHorizontal, BrainCircuit, Share2, Send } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AI_VOICES } from "@/constants/voices";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SceneBuilder } from "@/components/scene-builder";
 import { Switch } from "@/components/ui/switch";
 import Link from "next/link";
@@ -34,8 +33,7 @@ import {
 } from "@/components/ui/alert-dialog"
 
 
-type VoiceConfig = Record<string, { voiceName: string }>;
-type SynthesisMode = "single" | "multiple";
+type VoiceConfig = { voiceId: string };
 const TONES = ["Conversational", "Formal", "Humorous", "Dramatic", "Authoritative"];
 
 const PRESETS = [
@@ -56,11 +54,9 @@ export default function CreatePodcastPage() {
   const [documentContent, setDocumentContent] = useState("");
   const [summary, setSummary] = useState("");
   const [script, setScript] = useState<ScriptLine[]>([]);
-  const [voiceConfig, setVoiceConfig] = useState<VoiceConfig>({});
+  const [voiceConfig, setVoiceConfig] = useState<VoiceConfig>({ voiceId: AI_VOICES[0].voice_id });
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isPublic, setIsPublic] = useState(false);
-  const [synthesisMode, setSynthesisMode] = useState<SynthesisMode>("single");
-  const [singleVoiceName, setSingleVoiceName] = useState<string>(AI_VOICES[0].value);
   const [tone, setTone] = useState<string>(TONES[0]);
   const [addMusicAndSfx, setAddMusicAndSfx] = useState(false);
   const [activePreset, setActivePreset] = useState<string | null>(null);
@@ -82,15 +78,9 @@ export default function CreatePodcastPage() {
             setDocumentContent(project.originalContent);
             setSummary(project.summary || "");
             setScript(project.script || []);
-            setVoiceConfig(project.voiceConfig || {});
+            setVoiceConfig(project.voiceConfig || { voiceId: AI_VOICES[0].voice_id });
             setAudioUrl(project.audioUrl);
             setIsPublic(project.isPublic || false);
-            if (project.voiceConfig && !project.voiceConfig['__default']) {
-              setSynthesisMode("multiple");
-            } else if (project.voiceConfig && project.voiceConfig['__default']) {
-              setSynthesisMode("single");
-              setSingleVoiceName(project.voiceConfig['__default'].voiceName)
-            }
           } else {
             toast({ title: "Error", description: "Project not found or you don't have access.", variant: "destructive" });
             router.push('/create');
@@ -110,31 +100,6 @@ export default function CreatePodcastPage() {
     return uniqueSpeakers;
   }, [script]);
 
-  useEffect(() => {
-    if (synthesisMode === 'multiple' && speakers.length > 0) {
-      const newConfig: VoiceConfig = { ...voiceConfig };
-      let changed = false;
-      speakers.forEach((speaker) => {
-        if (!newConfig[speaker]) {
-          newConfig[speaker] = { voiceName: AI_VOICES[0].value };
-          changed = true;
-        }
-      });
-      // Clean up old speakers from voiceConfig
-      Object.keys(newConfig).forEach(key => {
-        if (key !== '__default' && !speakers.includes(key)) {
-          delete newConfig[key];
-          changed = true;
-        }
-      });
-
-      if (changed) {
-        setVoiceConfig(newConfig);
-      }
-    }
-  }, [speakers, synthesisMode, voiceConfig]);
-
-
   const handleGenerateScript = async () => {
     if (!documentContent.trim()) {
       toast({ title: "Error", description: "Document content cannot be empty.", variant: "destructive" });
@@ -144,22 +109,12 @@ export default function CreatePodcastPage() {
     setScript([]);
     setSummary("");
     setAudioUrl(null);
-    setVoiceConfig({});
     setCoachingNotes([]);
     try {
       const result: GeneratePodcastScriptOutput = await generatePodcastScript({ documentContent, tone, addMusicAndSfx });
       setScript(result.script);
       setProjectTitle(result.title);
       setSummary(result.summary);
-      if (synthesisMode === 'single') {
-        setVoiceConfig({'__default': {voiceName: singleVoiceName}});
-      } else {
-        const initialVoiceConfig = speakers.reduce((acc, speaker) => {
-            acc[speaker] = { voiceName: AI_VOICES[0].value };
-            return acc;
-        }, {} as VoiceConfig);
-        setVoiceConfig(initialVoiceConfig);
-      }
     } catch (error) {
       console.error(error);
       toast({ title: "Script Generation Failed", description: "An error occurred while generating the script.", variant: "destructive" });
@@ -174,26 +129,18 @@ export default function CreatePodcastPage() {
       toast({ title: "Error", description: "Script cannot be empty.", variant: "destructive" });
       return;
     }
+    if (!voiceConfig.voiceId) {
+      toast({ title: "Error", description: "Please select a voice.", variant: "destructive" });
+      return;
+    }
+
     setIsLoadingAudio(true);
     setAudioUrl(null);
 
-    let finalVoiceConfig = voiceConfig;
-    if (synthesisMode === 'single') {
-      finalVoiceConfig = { '__default': { voiceName: singleVoiceName } };
-    } else {
-      const missingVoices = speakers.filter(speaker => !finalVoiceConfig[speaker]?.voiceName);
-      if (missingVoices.length > 0) {
-          toast({ title: "Voice configuration missing", description: `Please select a voice for all speakers: ${missingVoices.join(', ')}`, variant: "destructive" });
-          setIsLoadingAudio(false);
-          return;
-      }
-    }
-
     const synthesisInput: SynthesizePodcastAudioInput = {
       script: scriptText,
-      voiceConfig: finalVoiceConfig
+      voiceId: voiceConfig.voiceId
     };
-
 
     try {
       const response = await fetch('/api/v1/synthesize', {
@@ -209,7 +156,6 @@ export default function CreatePodcastPage() {
 
       const result = await response.json();
       setAudioUrl(result.audioUrl);
-      setVoiceConfig(finalVoiceConfig); // Persist the voice config used for synthesis
 
       toast({ title: "Success!", description: "Your podcast audio has been generated." });
     } catch (error: any) {
@@ -251,13 +197,6 @@ export default function CreatePodcastPage() {
     }
     setIsSaving(true);
     
-    let finalVoiceConfig = voiceConfig;
-    if (synthesisMode === 'single') {
-        finalVoiceConfig = { '__default': { voiceName: singleVoiceName } };
-    }
-    // Update state to have the latest voice config before saving
-    setVoiceConfig(finalVoiceConfig);
-
     const currentIsPublic = makePublic || isPublic;
     setIsPublic(currentIsPublic);
 
@@ -268,7 +207,7 @@ export default function CreatePodcastPage() {
                 originalContent: documentContent,
                 script,
                 summary,
-                voiceConfig: finalVoiceConfig,
+                voiceConfig,
                 audioUrl,
                 isPublic: currentIsPublic,
             };
@@ -283,7 +222,7 @@ export default function CreatePodcastPage() {
                 originalContent: documentContent,
                 script,
                 summary,
-                voiceConfig: finalVoiceConfig,
+                voiceConfig,
                 audioUrl,
                 userId: user.uid,
                 isPublic: currentIsPublic,
@@ -456,65 +395,24 @@ export default function CreatePodcastPage() {
               <CardDescription>Generate your audio with AI voices.</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-6">
-                <RadioGroup value={synthesisMode} onValueChange={(v) => setSynthesisMode(v as SynthesisMode)} className="flex space-x-4">
-                    <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="single" id="single" />
-                        <Label htmlFor="single">Single Voice</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="multiple" id="multiple" />
-                        <Label htmlFor="multiple">Multi-Voice</Label>
-                    </div>
-                </RadioGroup>
-
-                {synthesisMode === 'single' ? (
-                    <div className="space-y-2">
-                      <Label>Select AI Voice</Label>
-                      <Select value={singleVoiceName} onValueChange={setSingleVoiceName}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a voice" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {AI_VOICES.map((voice) => (
-                            <SelectItem key={voice.value} value={voice.value}>
-                              {voice.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <p className="text-sm text-muted-foreground">
-                        Choose a single voice for the entire podcast.
-                      </p>
-                    </div>
-                ) : (
-                    <div className="space-y-4">
-                         <p className="text-sm text-muted-foreground">
-                            Assign a unique voice to each speaker.
-                        </p>
-                        {speakers.length > 0 ? speakers.map(speaker => (
-                            <div key={speaker} className="space-y-2">
-                                <Label>{speaker}</Label>
-                                <Select
-                                    value={voiceConfig[speaker]?.voiceName || ''}
-                                    onValueChange={voiceName => setVoiceConfig(prev => ({...prev, [speaker]: {voiceName}}))}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder={`Select voice for ${speaker}`} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {AI_VOICES.map((voice) => (
-                                            <SelectItem key={voice.value} value={voice.value}>
-                                            {voice.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        )) : (
-                            <p className="text-sm text-center text-muted-foreground py-4">No speakers detected in script. Please add speaker cues like "Host:" or "Speaker 1:".</p>
-                        )}
-                    </div>
-                )}
+               <div className="space-y-2">
+                  <Label>Select AI Voice</Label>
+                  <Select value={voiceConfig.voiceId} onValueChange={voiceId => setVoiceConfig({ voiceId })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a voice" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {AI_VOICES.map((voice) => (
+                        <SelectItem key={voice.voice_id} value={voice.voice_id}>
+                          {voice.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm text-muted-foreground">
+                    Choose a voice for the podcast.
+                  </p>
+                </div>
 
 
               <Button onClick={handleSynthesizeAudio} disabled={isSynthesizeDisabled}>
@@ -538,7 +436,7 @@ export default function CreatePodcastPage() {
                 )}
                 {audioUrl && !isLoadingAudio && (
                   <>
-                    <audio controls src={audioUrl} className="w-full">Your browser does not support the audio element.</audio>
+                    <audio controls src={audioUrl} className="w-full" key={audioUrl}>Your browser does not support the audio element.</audio>
                   </>
                 )}
                 {script.length > 0 && (
@@ -588,9 +486,9 @@ export default function CreatePodcastPage() {
 
                         {audioUrl && (
                           <Button asChild className="w-full" variant="secondary">
-                          <a href={audioUrl} download={`${projectTitle.replace(/\s/g, '_') || 'podcast'}.wav`}>
+                          <a href={audioUrl} download={`${projectTitle.replace(/\s/g, '_') || 'podcast'}.mp3`}>
                               <Download className="mr-2 h-4 w-4" />
-                              Download .wav
+                              Download .mp3
                           </a>
                           </Button>
                         )}

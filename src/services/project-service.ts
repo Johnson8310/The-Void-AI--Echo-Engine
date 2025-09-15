@@ -12,7 +12,7 @@ export interface ProjectData {
   originalContent: string;
   script: ScriptLine[];
   summary: string;
-  voiceConfig: Record<string, { voiceName: string }>;
+  voiceConfig: Record<string, any>;
   audioUrl: string | null;
   userId: string;
   isPublic?: boolean;
@@ -22,7 +22,7 @@ export interface Project extends Omit<ProjectData, 'userId' | 'voiceConfig'> {
     id: string;
     createdAt: Date;
     updatedAt?: Date;
-    voiceConfig: Record<string, { voiceName: string }>;
+    voiceConfig: Record<string, any>;
     isPublic: boolean;
 }
 
