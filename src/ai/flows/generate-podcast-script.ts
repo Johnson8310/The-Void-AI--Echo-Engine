@@ -10,7 +10,7 @@
  */
 
 import {ai} from '@/ai/genkit';
-import { gemini15Pro } from '@genkit-ai/googleai';
+import { gemini15Flash } from '@genkit-ai/googleai';
 import {z} from 'genkit';
 
 const GeneratePodcastScriptInputSchema = z.object({
@@ -41,7 +41,7 @@ export async function generatePodcastScript(input: GeneratePodcastScriptInput): 
 
 const prompt = ai.definePrompt({
   name: 'generatePodcastScriptPrompt',
-  model: gemini15Pro,
+  model: gemini15Flash,
   input: {schema: GeneratePodcastScriptInputSchema},
   output: {schema: GeneratePodcastScriptOutputSchema},
   prompt: `You are a podcast producer and script writer. Your task is to take the provided document and turn it into a full podcast episode.
